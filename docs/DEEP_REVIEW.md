@@ -315,3 +315,42 @@ BattleLuck is **architecturally sound** and **feature-complete** for a game mod.
 - **Secrets Setup:** docs/CI_SECRETS.md
 - **Config Layout:** README.md (lines 176–217)
 - **Commands Reference:** README.md (lines 25–173)
+
+---
+
+## Scoped Recovery and Deployment Audit (2026-07-16)
+
+This follow-up review covers the current no-code deployment and rollback surface.
+
+### Repository inventory
+
+The `main` checkout contains 368 tracked files: 277 C# files, 27 tracked JSON files, and 42 Markdown files. The review included source, configuration, schemas, prompts, documentation, and build metadata. The ignored `.mcp.json` file is an AgentsRoom tool configuration and is not part of the plugin; it currently contains an extra top-level fragment and is not valid JSON, but it is not loaded by BattleLuck.
+
+### Verification performed
+
+- `dotnet build BattleLuck.sln -c Release /p:DeployBattleLuck=false`: passed with 0 errors and 13 pre-existing warnings.
+- Event and schema JSON files: parsed successfully with PowerShell JSON parsing; `.mcp.json` was excluded because it is an ignored tool file.
+- `git diff --check`: no whitespace errors.
+- No `BattleLuck.Tests` project is present, so a full automated test run is not available.
+- The shell validator is included for Linux/WSL hosts; this Windows checkout does not have a WSL distribution available, so it was not executed here.
+
+### Recovery boundaries
+
+BattleLuck now exposes three deliberately separate recovery scopes:
+
+1. **Event definition rollback** (`.ai event rollback <eventId>`): restores a verified BattleLuck deployment backup after manifest/hash and schema checks.
+2. **Per-player event rollback** (`.ai rollback player <name|steamId>`): restores one online player's persisted pre-event snapshot. The snapshot is consumed only after a successful restore.
+3. **All-player event rollback** (`.ai rollback server players confirm`): restores every matching online event snapshot and retains offline snapshots as pending. It never rewrites the V Rising world save.
+
+`.ai rollback server purge <eventId> [backupId] confirm` deletes one inactive BattleLuck deployment-backup directory only. It cannot delete or alter `VRisingServer/Saves`; that directory is owned by V Rising's native `SaveFileManager` and must be managed with the host's world-save backup tooling. This is intentional: a plugin-side recursive delete of the native world history could permanently destroy the only recovery copy.
+
+### Deployment controls
+
+Deployments use an HTTPS-only source, a staging directory, schema/referential validation, atomic directory replacement, a manifest containing SHA-256 hashes, and best-effort restoration when registration fails. Append-only JSONL audit records are written to `BepInEx/config/BattleLuck/logs/event_audit.jsonl` and rotate at 10 MB. The audit command reports common error codes and recommendations; it never executes an AI recommendation.
+
+### Remaining operational risks
+
+- No live dedicated-server crash/restart test was run in this checkout; test the Safe-Stage workflow on a copy of the world first.
+- ECS registration, zone cleanup, and player restoration still require a running V Rising server for integration verification.
+- Existing compiler warnings remain in unrelated legacy paths and should be addressed separately.
+- Native full-world rollback remains an operator/host responsibility. The log values supplied for `world1` (`AutoSaveCount=10`, `AutoSaveInterval=120`, compressed saves) confirm that V Rising is maintaining its own save history; they do not provide a safe plugin API for deleting that history.

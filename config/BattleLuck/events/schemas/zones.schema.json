@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://battleluck.dev/schemas/zones.schema.json",
+  "title": "BattleLuck legacy zone projection",
+  "type": "object",
+  "required": ["zones"],
+  "properties": {
+    "detection": { "type": "object" },
+    "autoEnter": { "type": "object" },
+    "zones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["hash", "position"],
+        "properties": {
+          "hash": { "type": "integer", "minimum": 1 },
+          "position": { "$ref": "#/$defs/vec3" },
+          "radius": { "type": "number", "exclusiveMinimum": 0 },
+          "exitRadius": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "vec3": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    }
+  }
+}

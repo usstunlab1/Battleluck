@@ -97,6 +97,7 @@ Any player may request status through `.ai`; only admins can change event files:
 ```text
 .ai event deploy shadow_hunt https://gist.github.com/owner/gist-id
 .ai event status shadow_hunt
+.ai event audit shadow_hunt
 .ai event rollback shadow_hunt
 ```
 
@@ -104,6 +105,24 @@ Any player may request status through `.ai`; only admins can change event files:
 `kits.json`, and `prompt.txt`. BattleLuck downloads into staging, validates JSON,
 actions, prompt rules, kit references, and zone-hash uniqueness, backs up the
 current folder under `backups/<eventId>/`, then registers the event. It never
-starts the match automatically. `rollback` restores the latest known-good backup;
-it cannot undo a live native action. KindredExtract IDs must still be verified
-with `.dump p`/`.dump eq` before the Gist is published.
+starts the match automatically. Every backup includes `manifest.json` with
+SHA-256 hashes; rollback verifies it before restoring. `.ai event audit [eventId]`
+shows outcome counts and recurring error-code recommendations from
+`logs/event_audit.jsonl`. It cannot undo a live native action. KindredExtract IDs
+must still be verified with `.dump p`/`.dump eq` before the Gist is published.
+
+The offline schemas are in `events/schemas/`; `tools/validators/validate-json.sh`
+can run jq/AJV checks when those optional tools are installed.
+
+### Rollback scopes
+
+```text
+.ai event rollback <eventId>                           # event files
+.ai rollback player <name|steamId>                    # one online event player
+.ai rollback server players confirm                   # all online event players
+.ai rollback server purge <eventId> [backupId] confirm # delete BattleLuck backup
+```
+
+These commands do not restore the V Rising world save. The dedicated server's
+SaveFileManager/host backup process owns full-world rollback. Offline player
+snapshots are retained until that player is online and explicitly restored.

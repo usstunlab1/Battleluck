@@ -140,7 +140,11 @@ discards pending proposals; it does not reverse an action that already executed.
 | `.ai rollback [id]` | Discard a pending live-action proposal (admin) |
 | `.ai event deploy <eventId> <https-gist-url>` | Stage, validate, back up, and register four event files (admin) |
 | `.ai event status [eventId]` | Read-only deployment/file status (public) |
+| `.ai event audit [eventId]` | Summarize deployment outcomes and remediation hints (admin) |
 | `.ai event rollback <eventId>` | Restore the latest known-good event deployment (admin) |
+| `.ai rollback player <name|steamId>` | Restore one online player's pre-event snapshot (admin) |
+| `.ai rollback server players confirm` | Restore all online event snapshots; offline remain pending (admin) |
+| `.ai rollback server purge <eventId> [backupId] confirm` | Delete a BattleLuck deployment backup only (admin) |
 | `.ai.reload` | Reload AI configuration (admin) |
 | `.ai.status` | Check detailed AI provider status (admin) |
 
@@ -182,7 +186,9 @@ durable. BattleLuck persists each player's pre-event snapshot in
 `BepInEx/data/BattleLuck/snapshots/<steamId>.json`; normal exit and explicit restore
 use it. A hard crash may terminate before cleanup, so inspect the logs and restore
 affected players after restart before retrying. Automatic rollback on an abrupt
-process termination is not guaranteed.
+process termination is not guaranteed. Full V Rising world-save restore remains
+the dedicated server host's SaveFileManager/backup operation and is not performed
+by the plugin.
 
 Developer-only AI tools include `.ai.sequence.gather`, `.ai.sequence.create`,
 `.ai.sequence.preview`, and `.ai.sequence.execute`. Sequence steps can use

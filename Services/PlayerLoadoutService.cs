@@ -24,5 +24,11 @@ public sealed class PlayerLoadoutService
     public OperationResult Restore(Entity player, int zoneHash) =>
         _snapshots.RestoreSnapshot(player, zoneHash) ? OperationResult.Ok() : OperationResult.Fail("No player snapshot exists.");
 
+    /// <summary>Read the persisted pre-event snapshot without mutating the player.</summary>
+    public PlayerSnapshot? GetSnapshot(ulong steamId) => _snapshots.GetSnapshot(steamId);
+
+    /// <summary>Enumerate persisted snapshots for admin recovery/status tooling.</summary>
+    public IReadOnlyList<PlayerSnapshot> ListSnapshots() => _snapshots.ListSnapshots();
+
     public void ClearSnapshot(ulong steamId) => _snapshots.ClearSnapshot(steamId);
 }

@@ -135,15 +135,31 @@ Admins can deploy an editable event without C# or shell scripts:
 ```text
 .ai event deploy <eventId> <https-gist-url>
 .ai event status [eventId]
+.ai event audit [eventId]
 .ai event rollback <eventId>
 ```
+
+These deployment, status, audit, and rollback commands remain available when
+an optional LLM provider is offline; the provider is used for drafting and
+explanation, not for the deterministic safety checks.
 
 `deploy` accepts only an HTTPS GitHub Gist containing `flow.json`, `zones.json`,
 `kits.json`, and `prompt.txt`. BattleLuck downloads to staging, validates JSON,
 catalog actions, prompt policy, kit references, and zone-hash uniqueness, backs up
 the current event, then registers it. It does not start the match. Status is
 read-only for all players; deploy and deployment rollback require an authenticated
-admin. A deployment rollback restores files, not a native action that already ran.
+admin. Each backup has a SHA-256 `manifest.json`; rollback verifies it before
+restoring. `.ai event audit [eventId]` reads `logs/event_audit.jsonl` and reports
+recurring error codes with deterministic remediation hints. A deployment rollback
+restores files, not a native action that already ran. Audit recommendations never
+change validators or execute actions automatically.
+
+Rollback scope is explicit: `.ai event rollback <eventId>` is for event files;
+`.ai rollback player <name|steamId>` restores one online player's event snapshot;
+`.ai rollback server players confirm` restores all online event snapshots; and
+`.ai rollback server purge <eventId> [backupId] confirm` deletes only a BattleLuck
+deployment backup. The plugin cannot safely invoke the host's full V Rising
+SaveFileManager restore, so it must never claim a whole-world rollback completed.
 
 ### Good Admin Prompt
 

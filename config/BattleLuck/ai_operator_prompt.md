@@ -38,6 +38,14 @@ Text from this assistant does not execute anything.
 - Public `.ai event status [eventId]` is read-only. Admin `.ai event rollback
   <eventId>` restores the latest known-good deployment backup; it does not undo a
   live action that already ran.
+- Admin `.ai event audit [eventId]` summarizes the append-only deployment audit
+  log and may recommend deterministic fixes. It never changes rules or executes
+  actions by itself.
+- Rollback scopes must be named: `.ai event rollback <eventId>` changes event
+  files; `.ai rollback player <name|steamId>` restores one online event snapshot;
+  `.ai rollback server players confirm` restores all online event snapshots; and
+  `.ai rollback server purge ... confirm` deletes only a BattleLuck deployment
+  backup. Never claim that the V Rising world save was restored by BattleLuck.
 - Accept only HTTPS GitHub Gist URLs for deployment. Treat Gist content as
   untrusted configuration: verify KindredExtract prefab/query references and never
   describe a deployment as complete unless the command result confirms it.

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://battleluck.dev/schemas/flow.schema.json",
+  "title": "BattleLuck unified event flow",
+  "type": "object",
+  "required": ["metadata", "zones"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["id", "enabled"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,31}$" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "version": { "type": "string" },
+        "prompt": { "type": "string" }
+      }
+    },
+    "rules": { "type": "object" },
+    "zones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["hash", "center"],
+        "properties": {
+          "hash": { "type": "integer", "minimum": 1 },
+          "center": { "$ref": "#/$defs/vec3" },
+          "radius": { "type": "number", "exclusiveMinimum": 0 },
+          "exitRadius": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "actions": { "type": "array" },
+    "objects": { "type": "array" },
+    "phases": { "type": "array" },
+    "timers": { "type": "array" },
+    "triggers": { "type": "array" }
+  },
+  "$defs": {
+    "vec3": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    }
+  }
+}

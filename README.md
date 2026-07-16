@@ -158,7 +158,8 @@ Permission labels: **public** commands are read-only/advice-oriented;
 .ai create <eventId> [template] Clone an event, default Bloodbath [admin]
 .ai event deploy <id> <gist>   Stage, validate, back up, and register an event [admin]
 .ai event status [id]          Show deployment/file status [public]
-.ai event rollback <eventId>  Restore the latest known-good event backup [admin]
+.ai event audit [id]            Summarize deployment outcomes and recommendations [admin]
+.ai event rollback <eventId>   Restore the latest known-good event backup [admin]
 .ai event request <change>     Draft a validated event edit [admin]
 .ai event review <mode>        Review an event without writing files [admin]
 .ai event preview <id>         Inspect a pending proposal [admin]
@@ -303,6 +304,7 @@ admins can deploy or roll back files; no admin needs to write C#:
 ```text
 .ai event deploy shadow_hunt https://gist.github.com/owner/gist-id
 .ai event status shadow_hunt
+.ai event audit shadow_hunt
 .ai event rollback shadow_hunt
 ```
 
@@ -310,9 +312,36 @@ admins can deploy or roll back files; no admin needs to write C#:
 an HTTPS GitHub Gist, validates the declarative actions, prompt policy, JSON, kit
 references, and zone hashes, backs up the current event under
 `BepInEx/config/BattleLuck/backups/<eventId>/`, then stages and registers it. It
-does not start the event. `status` is read-only and available to all players;
-`rollback` restores the latest known-good deployment and re-registers it. A
-rollback restores files, not a live action that already executed.
+does not start the event. Each backup contains `manifest.json` with file sizes
+and SHA-256 hashes. `status` is read-only and available to all players;
+`rollback` verifies that manifest before restoring the latest known-good
+deployment. `.ai event audit [eventId]` summarizes the JSONL audit trail and
+suggests deterministic fixes from recurring error codes. A rollback restores
+files, not a live action that already executed.
+
+The offline validator is available at `tools/validators/validate-json.sh` and
+the matching schemas are in `config/BattleLuck/events/schemas/`. The plugin
+performs these dependency-free checks itself when the event is staged. These
+deployment, status, audit, and rollback commands are deterministic and do not
+require an external LLM provider to be online; the optional LLM only helps
+admins draft or explain changes.
+
+#### Rollback scopes
+
+```text
+.ai event rollback <eventId>                           # event definition backup
+.ai rollback player <name|steamId>                    # one online player's event snapshot
+.ai rollback server status                            # count online/offline event snapshots
+.ai rollback server players confirm                   # restore all online event snapshots
+.ai rollback server purge <eventId> [backupId] confirm # delete a BattleLuck backup
+```
+
+The player/server commands restore `BepInEx/data/BattleLuck/snapshots/` state;
+offline snapshots remain on disk and are reported as pending. A full V Rising
+world/server-save rollback is owned by the dedicated server's SaveFileManager
+and host backup tooling, so BattleLuck does not pretend to restore or delete it.
+The `purge` command can delete only a named BattleLuck deployment backup after
+the explicit `confirm` token; it never deletes the host's world save.
 
 KindredExtract remains a developer reference tool: use `.dump p`/`.dump eq` to
 verify prefab names and queries before publishing the Gist. BattleLuck does not

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://battleluck.dev/schemas/kits.schema.json",
+  "title": "BattleLuck player loadout kit",
+  "type": "object",
+  "required": ["settings"],
+  "properties": {
+    "settings": { "type": "object" },
+    "blood": { "type": ["object", "null"] },
+    "armors": { "type": ["object", "null"] },
+    "weapons": { "type": "array" },
+    "items": { "type": "array" },
+    "abilities": { "type": ["object", "null"] },
+    "passiveSpells": { "type": "array" }
+  }
+}

@@ -59,7 +59,7 @@ public static class PlayerCommands
             : result.UserMessage);
     }
 
-    [Command("rollback", description: "Admin shortcut for .ai event rollback <operationId>", adminOnly: true)]
+    [Command("rollback", description: "Discard a pending AI proposal; use .ai rollback player/server for event-state recovery", adminOnly: true)]
     public static void RollbackEvent(ChatCommandContext ctx, string operationId = "")
     {
         if (string.IsNullOrWhiteSpace(operationId))
@@ -1149,6 +1149,85 @@ public static class PlayerCommands
             return true;
         }
 
+        if (words[0].Equals("event", StringComparison.OrdinalIgnoreCase) &&
+            words.Count >= 2 && words[1].Equals("deploy", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!IsAdminSender(ctx))
+            {
+                ctx.Reply("🚫 Event deployment requires admin privileges. Use `.ai event status [eventId]` to inspect a deployment.");
+                return true;
+            }
+
+            if (words.Count < 4)
+            {
+                ctx.Reply("Usage: .ai event deploy <eventId> <https-gist-url> (admin only)");
+                return true;
+            }
+
+            await EventDeploymentCommands.DeployFromGist(ctx, words[2], words[3]);
+            return true;
+        }
+
+        if (words[0].Equals("event", StringComparison.OrdinalIgnoreCase) &&
+            words.Count >= 2 && words[1].Equals("audit", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!IsAdminSender(ctx))
+            {
+                ctx.Reply("🚫 Event audit details are admin-only. Use `.ai event status [eventId]` for public deployment status.");
+                return true;
+            }
+
+            EventDeploymentCommands.AuditSummary(ctx, words.Count > 2 ? words[2] : "");
+            return true;
+        }
+
+        if (words[0].Equals("event", StringComparison.OrdinalIgnoreCase) &&
+            words.Count >= 3 && words[1].Equals("rollback", StringComparison.OrdinalIgnoreCase) &&
+            LooksLikeDeploymentEventId(words[2]))
+        {
+            if (!IsAdminSender(ctx))
+            {
+                ctx.Reply("🚫 Event deployment rollback requires admin privileges.");
+                return true;
+            }
+
+            EventDeploymentCommands.Rollback(ctx, words[2]);
+            return true;
+        }
+
+        if (words[0].Equals("rollback", StringComparison.OrdinalIgnoreCase) &&
+            words.Count >= 2 && words[1].Equals("player", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!IsAdminSender(ctx))
+            {
+                ctx.Reply("🚫 Per-player event rollback requires admin privileges.");
+                return true;
+            }
+
+            PlayerRollbackCommands.RollbackPlayer(ctx, words.Count > 2 ? words[2] : "self");
+            return true;
+        }
+
+        if (words[0].Equals("rollback", StringComparison.OrdinalIgnoreCase) &&
+            words.Count >= 2 && words[1].Equals("server", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!IsAdminSender(ctx))
+            {
+                ctx.Reply("🚫 Server/player-state rollback requires admin privileges.");
+                return true;
+            }
+
+            if (words.Count >= 3 && words[2].Equals("status", StringComparison.OrdinalIgnoreCase))
+                PlayerRollbackCommands.Status(ctx);
+            else if (words.Count >= 4 && words[2].Equals("players", StringComparison.OrdinalIgnoreCase))
+                PlayerRollbackCommands.RollbackAllEventPlayers(ctx, words[3].Equals("confirm", StringComparison.OrdinalIgnoreCase));
+            else if (words.Count >= 5 && words[2].Equals("purge", StringComparison.OrdinalIgnoreCase))
+                EventDeploymentCommands.PurgeBackup(ctx, words[3], words[4].Equals("confirm", StringComparison.OrdinalIgnoreCase) ? "" : words[4], words[^1].Equals("confirm", StringComparison.OrdinalIgnoreCase));
+            else
+                ctx.Reply("Use `.ai rollback server status`, `.ai rollback server players confirm`, or `.ai rollback server purge <eventId> [backupId] confirm`. These commands do not touch the V Rising world save.");
+            return true;
+        }
+
         if (words[0].Equals("end", StringComparison.OrdinalIgnoreCase) && words.Count == 1)
         {
             var ended = GameChatAiBridge.EndSession(steamId);
@@ -1324,6 +1403,12 @@ public static class PlayerCommands
                 rest.StartsWith("status ", StringComparison.OrdinalIgnoreCase))
             {
                 EventDeploymentCommands.Status(ctx, rest.Length == "status".Length ? "" : rest["status ".Length..].Trim());
+                return true;
+            }
+            if (rest.Equals("audit", StringComparison.OrdinalIgnoreCase) ||
+                rest.StartsWith("audit ", StringComparison.OrdinalIgnoreCase))
+            {
+                EventDeploymentCommands.AuditSummary(ctx, rest.Length == "audit".Length ? "" : rest["audit ".Length..].Trim());
                 return true;
             }
             if (rest.StartsWith("review ", StringComparison.OrdinalIgnoreCase))
@@ -2122,7 +2207,7 @@ public static class PlayerCommands
         ctx.Reply("Live change flow: catalog/search → preview → admin approval → main-thread execution → rollback/discard if still pending.");
         ctx.Reply("Public/read-only: .ai <question>, .aistatus");
         ctx.Reply("Admin event flow: .ai create <eventId> [templateId] (clone), .ai event deploy <eventId> <https-gist-url>, .ai event request/review, .ai event preview, .ai approve, .ai rollback");
-        ctx.Reply("Public deployment status: .ai event status [eventId]. Admin recovery: .ai event rollback <eventId> restores the latest known-good file backup.");
+        ctx.Reply("Public deployment status: .ai event status [eventId]. Admin recovery: .ai event rollback <eventId> restores the latest known-good file backup; .ai rollback player <name|steamId> restores one event snapshot; .ai rollback server players confirm restores all online event snapshots. Admin learning: .ai event audit [eventId].");
         ctx.Reply("Admin runtime actions: .ai catalog search <text>, .ai action <catalog action>, then .ai approve to execute");
         ctx.Reply("Admin system references: .ai action system.search/system.find, then system.register for a verified ProjectM/Unity alias");
         ctx.Reply("Admin developer tools: .ai.sequence.create/gather/preview/show/list/add/delete/execute; use wait:<seconds> and tick:<event-second> markers");

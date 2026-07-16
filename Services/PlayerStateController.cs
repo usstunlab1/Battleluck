@@ -633,6 +633,26 @@ namespace BattleLuck.Services
         return ReadFromDisk(steamId);
     }
 
+    /// <summary>Enumerate valid persisted snapshots without changing state.</summary>
+    public IReadOnlyList<PlayerSnapshot> ListSnapshots()
+    {
+        var snapshots = new List<PlayerSnapshot>();
+        if (!Directory.Exists(SnapshotDir))
+            return snapshots;
+
+        foreach (var path in Directory.GetFiles(SnapshotDir, "*.json"))
+        {
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (!ulong.TryParse(name, out var steamId))
+                continue;
+            var snapshot = GetSnapshot(steamId);
+            if (snapshot != null)
+                snapshots.Add(snapshot);
+        }
+
+        return snapshots;
+    }
+
     public void ClearSnapshot(ulong steamId)
     {
         _cache.Remove(steamId);

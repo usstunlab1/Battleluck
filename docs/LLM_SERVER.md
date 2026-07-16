@@ -47,6 +47,10 @@ BattleLuck writes a player's pre-event state to
 exit and explicit restore can roll that state back, but a hard crash can interrupt
 cleanup before it executes. After a restart, inspect the log and restore affected
 players before retrying the event. Never report rollback as complete unless the
-restore operation returned success.
+restore operation returned success. Use `.ai rollback player <name|steamId>` for
+one online player or `.ai rollback server players confirm` for all online event
+snapshots; offline snapshots remain pending. `.ai event rollback <eventId>` is
+only an event-definition rollback. The V Rising SaveFileManager owns full-world
+save restore/delete, so BattleLuck does not claim to control that host operation.
 
 The authoritative prompt is `config/BattleLuck/prompts/llm_server.md`; `RoadmapService` appends the current roadmap and role guardrails to the runtime system prompt.
