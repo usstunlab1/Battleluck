@@ -29,3 +29,13 @@ Admins can register a verified system without restarting:
 Registrations are saved in `live_system_registry.json`. They are verified references for BattleLuck and AI tooling; they do not instantiate, patch, or invoke arbitrary native ECS systems.
 
 See the [user guide](../../docs/user/README.md) and [developer guide](../../docs/developer/README.md) for command and schema details.
+
+## Create a custom event
+
+Admins can clone the Bloodbath lifecycle and customize it without compiling a new mode:
+
+```text
+.event.create shadow_hunt bloodbath
+```
+
+The command creates `events/shadow_hunt/` with independent `flow.json`, `zones.json`, `kits.json`, and `prompt.txt` files, assigns a unique zone hash, and registers the event immediately. Change the copied zone center and `teleportSpawn` before using it as a separate arena. The cloned event keeps Bloodbath's entry/exit kit transaction, rollback snapshot, action validation, and elimination lifecycle until you edit those files.

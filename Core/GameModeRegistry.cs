@@ -29,6 +29,32 @@ public sealed class GameModeRegistry
     /// <summary>Check if a mode is registered.</summary>
     public bool IsRegistered(string modeId) => _modes.ContainsKey(modeId);
 
+    /// <summary>
+    /// Load and register a newly-created declarative event without restarting
+    /// the server. EventTemplateService uses this after cloning a template.
+    /// </summary>
+    public bool TryRegisterConfiguredMode(string modeId, out string error)
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(modeId))
+        {
+            error = "Mode id is required.";
+            return false;
+        }
+
+        try
+        {
+            var config = ConfigLoader.Load(modeId);
+            Register(new GameModeEngine(config));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Could not load event '{modeId}': {ex.Message}";
+            return false;
+        }
+    }
+
     /// <summary>Get all registered mode IDs.</summary>
     public IReadOnlyCollection<string> GetRegisteredModes() => _modes.Keys;
 
@@ -43,7 +69,12 @@ public sealed class GameModeRegistry
             return modes;
 
         var seenModeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in Directory.EnumerateFiles(eventsRoot, "*.json", SearchOption.TopDirectoryOnly))
+        var paths = Directory.EnumerateFiles(eventsRoot, "*.json", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateDirectories(eventsRoot)
+                .Select(directory => Path.Combine(directory, "flow.json"))
+                .Where(File.Exists));
+
+        foreach (var path in paths)
         {
             try
             {

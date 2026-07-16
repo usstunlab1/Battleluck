@@ -93,6 +93,7 @@ All admin commands require admin permissions and use the `.` prefix. See the com
 | Command | Description |
 |---------|-------------|
 | `.reload` | Reload configuration |
+| `.event.create <eventId> [templateId]` | Clone Bloodbath (or another event) into a custom event |
 | `.event.start <mode>` | Start a game mode |
 | `.event.end <mode>` | End a game mode |
 | `.event.status` | Show active events and player counts |

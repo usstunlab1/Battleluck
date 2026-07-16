@@ -48,6 +48,7 @@ All commands use the `.` prefix. Player commands are available to everyone; admi
 
 ```text
 .reload                        Reload BattleLuck configuration
+.event.create <eventId>        Clone Bloodbath into a custom event
 .event.start <mode>            Start and enter an event mode
 .event.end <mode>              End a mode's active sessions
 .event.status                  Show active events and player counts
@@ -73,6 +74,16 @@ All commands use the `.` prefix. Player commands are available to everyone; admi
 ```
 
 Live AI changes remain preview-first and approval-gated. Use `.ai event rollback <operationId>` when a supported operation needs to be reverted.
+
+### Create your own Bloodbath-style event
+
+Admins can create a complete editable event without adding C# code:
+
+```text
+.event.create shadow_hunt bloodbath
+```
+
+This creates `config/BattleLuck/events/shadow_hunt/` with its own `flow.json`, `zones.json`, `kits.json`, and `prompt.txt`, assigns a unique zone hash, and registers the event immediately. Customize the copied zone center, kit, actions, phases, timers, and prompt, then run `.event.start shadow_hunt`.
 
 ## Support
 
