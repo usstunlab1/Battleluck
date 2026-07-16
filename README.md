@@ -13,7 +13,26 @@ Event behavior is defined through configuration and validated before execution. 
 3. Start the server once, then edit files under `BepInEx/config/BattleLuck/`, including event definitions inside `BepInEx/config/BattleLuck/events/<eventId>/`.
 4. Use `.help` in game to see the commands available to your permission level.
 
-AI is optional and local-first. It is disabled until a server owner configures a provider and explicitly enables the requested features.
+AI is server-owned and local-first. Every installation includes the `.ai` command
+surface, but no model weights or provider credentials are bundled. A server owner
+can run a local Llama/Ollama-compatible endpoint or explicitly configure a hosted
+provider; without one, BattleLuck uses its simple local fallback for basic help and
+catalog guidance. Live actions and event edits still require admin approval.
+
+### How AI works for every installation
+
+1. Install BattleLuck on the dedicated server; players do not need a separate AI
+   client or model download.
+2. The server reads `BepInEx/config/BattleLuck/ai_config.json` and starts the
+   configured provider or local fallback. The owner can run `.ai.status` or
+   `.aistatus` to see the active provider and health.
+3. Players can use `.ai <question>` for server-side advice. Player chat is
+   advice-only and cannot change events, NPCs, inventory, or world state.
+4. Admins use catalog search and preview commands. Only an explicit approval sends
+   a validated operation to the server main-thread runtime.
+5. Hosted AI, Discord, MCP, and sidecar integrations are opt-in. If enabled, the
+   configured provider receives the prompt; conversation history remains off by
+   default and no credentials are stored in the mod package.
 
 ## Included features
 

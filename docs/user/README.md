@@ -32,6 +32,22 @@ Players using Thunderstore can install BattleLuck directly:
 
 ## Configuration
 
+### AI for Server Owners and Players
+
+BattleLuck's AI runs on the dedicated server, so players do not need a separate
+AI installation. The server owner configures `BepInEx/config/BattleLuck/ai_config.json`:
+
+- Local Llama/Ollama-compatible inference is the recommended private setup.
+- Cloud providers are optional and require the owner's credentials.
+- Without a reachable provider, a simple local fallback still handles basic help
+  and catalog guidance.
+- `.ai <message>` is available to players as advice-only chat.
+- Admin previews, approvals, and the server main-thread dispatcher protect live
+  event/NPC/world mutations.
+
+Use `.aistatus` to inspect provider health. Admins can reload configuration with
+`.ai.reload`. Conversation history is off by default.
+
 ### Session Config
 
 Each game mode has its own configuration folder under `BepInEx/config/BattleLuck/`:
@@ -54,24 +70,25 @@ BepInEx/config/BattleLuck/
 
 ### AI Configuration
 
-By default, BattleLuck is **local-only** and AI is optional:
+BattleLuck is **local-first**. The default profile points at a local endpoint and
+falls back to built-in guidance when that endpoint is not reachable. No hosted
+credentials are required for installation:
 
 ```json
 {
-  "enabled": false,
+  "enabled": true,
   "provider": "llama",
   "llama_api": {
-    "enabled": false,
+    "enabled": true,
     "base_url": "http://127.0.0.1:11434",
-    "model": "llama2"
+    "model": "llama2:latest"
   }
 }
 ```
 
-To enable AI:
-1. Start a local LLM endpoint (see [LLM Guide](../LLM_GUIDE.md))
-2. Set `"enabled": true` in `ai_config.json`
-3. Restart the server
+For full LLM responses, start a local endpoint and install the configured model
+(see [LLM Guide](../LLM_GUIDE.md)), then run `.ai.reload`. To disable the AI
+surface completely, set `"enabled": false` and reload the server configuration.
 
 ## Game Modes
 

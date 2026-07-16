@@ -4,6 +4,26 @@ BattleLuck ships with a local-first Game Session Director workflow. The LLM is n
 
 The recommended published setup is a local OpenAI-compatible Llama endpoint, with hosted providers disabled unless a server owner intentionally configures them.
 
+## How AI works after installation
+
+AI is server-side. Players only install BattleLuck; they do not install a second
+plugin, model, or API client. Every installation exposes `.ai` and `.aistatus`.
+
+- The server reads `BepInEx/config/BattleLuck/ai_config.json` at startup.
+- A configured local Llama/Ollama-compatible endpoint provides full LLM replies.
+- A hosted provider (Cloudflare or Google) is optional and requires the owner to
+  supply credentials through config/environment variables.
+- If no provider is reachable, BattleLuck keeps a simple local fallback for basic
+  command/catalog guidance; it does not pretend that a full model is available.
+- Player `.ai` chat is advice-only. Admin previews and approvals are required for
+  live actions, event edits, NPC/boss control, and config writes.
+- Network calls run asynchronously. Approved ProjectM/Unity mutations are queued
+  to the server main thread. Conversation history is disabled by default.
+
+The owner can inspect the active provider with `.aistatus` and reload settings with
+`.ai.reload` (admin). A typical local setup is: start the endpoint, ensure the
+configured model is installed, then run `.ai.reload` and `.ai.status`.
+
 ## Supported Runtime
 
 Default endpoint:
