@@ -116,6 +116,7 @@ Do not publish `.env`, logs, player snapshots, or AI operation logs.
 
 ## Related Documentation
 
+- [Open-source/self-hosted operations](../OPEN_SOURCE_SELF_HOSTED.md) — repository CLI setup and local AI options
 - [Publishing Checklist](../PUBLISHING_CHECKLIST.md) — Full release checklist
 - [LLM Guide](../LLM_GUIDE.md) — AI service setup
 - [Thunderstore Upload Guide](https://wiki.vrisingmods.com/dev/upload_to_thunderstore.html)

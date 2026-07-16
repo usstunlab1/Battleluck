@@ -7,6 +7,7 @@ BattleLuck is a V Rising dedicated-server BepInEx plugin. These pages describe i
 - [User guide](user/README.md) — install, configure, and run events.
 - [Developer guide](developer/README.md) — architecture, ECS, patches, and builds.
 - [AI guide](LLM_GUIDE.md) — local providers, prompts, safety, and event authoring.
+- [Open-source/self-hosted operations](OPEN_SOURCE_SELF_HOSTED.md) — V Rising CLI setup, local AI, and future game adapters.
 - [Publishing checklist](PUBLISHING_CHECKLIST.md) — validate a Thunderstore-ready package.
 - [Reference index](reference/README.md) — V Rising-specific API and mod references.
 

@@ -63,6 +63,51 @@ health.
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
 - Optional local LLM prompts for event and mod authoring with approval gates and main-thread-safe execution.
 
+## 🌐 Open-source / self-hosted game operations
+
+BattleLuck is V Rising-first and can run entirely on your own server. The plugin,
+event files, action catalog, rollback state, and optional AI provider stay under
+the server owner's control; there is no required hosted control plane.
+
+### 🌟 Featured projects
+
+- **[BepInEx](https://github.com/BepInEx/BepInEx)** + **[Harmony](https://github.com/pardeike/Harmony)** — plugin loading and safe game-system patches.
+- **[VampireCommandFramework](https://thunderstore.io/c/v-rising/p/deca/VampireCommandFramework/)** — V Rising chat commands used by BattleLuck.
+- **[Ollama](https://github.com/ollama/ollama)** or **[llama.cpp](https://github.com/ggml-org/llama.cpp)** — private local LLM hosting for `.ai`.
+- **[Docker Compose](https://docs.docker.com/compose/)** — optional one-command local AI runtime from `docker-compose.ai.yml`.
+- **BattleLuck action catalog** — V Rising events, NPC control, sequences, ticks, approvals, and native-backed rollback in this repository.
+
+### ⚔️ Install and deploy from this repository
+
+```powershell
+git clone https://github.com/usstunlab1/Battleluck.git
+Set-Location Battleluck
+dotnet restore
+dotnet build .\BattleLuck.sln -c Release /p:DeployBattleLuck=false
+```
+
+Deploy directly to a server after installing BepInEx and VampireCommandFramework:
+
+```powershell
+dotnet build .\BattleLuck.sln -c Release `
+  /p:DeployBattleLuck=true `
+  /p:ServerPluginPath="C:\Path\to\VRising_Server\BepInEx\plugins\BattleLuck" `
+  /p:ServerConfigPath="C:\Path\to\VRising_Server\BepInEx\config\BattleLuck"
+```
+
+For a private AI provider, run `docker compose -f docker-compose.ai.yml up -d`,
+confirm `http://127.0.0.1:11434` is reachable, then use `.ai.reload` in game.
+See the [self-hosted operations guide](docs/OPEN_SOURCE_SELF_HOSTED.md) for
+provider, packaging, and release details.
+
+### 🚀 Other games
+
+**V Rising is the only shipped game adapter today.** The action/catalog boundary
+is intentionally separated from game-specific ECS code so future adapters can be
+added without changing the `.ai`, approval, task, sequence, and rollback workflow.
+Unity ECS/BepInEx games are the next planned adapter family; Unreal, Source, and
+other games are roadmap ideas only and are not supported by this release.
+
 ## Commands
 
 `.ai` is the primary BattleLuck interface. All commands use the `.` prefix, and
