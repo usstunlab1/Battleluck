@@ -108,7 +108,9 @@ Do not publish `.env`, logs, player snapshots, or AI operation logs.
 
 1. Stop the V Rising server
 2. Copy `bin/Release/net6.0/BattleLuck.dll` to `BepInEx/plugins/`
-3. Copy `config/BattleLuck/` to `BepInEx/config/BattleLuck/`
+3. Optionally copy `config/BattleLuck/` to `BepInEx/config/BattleLuck/` to
+   pre-seed a server. Otherwise the DLL extracts missing defaults and helper tools
+   on first load into `BepInEx/config/BattleLuck/` and `.../tools/`.
 4. Start local AI (if enabled): `.\scripts\start_vllm.ps1`
 5. Start the server
 6. Run `.help` and `.ai`; run optional `.reload`, `.ai.status`, or `.modelist` only

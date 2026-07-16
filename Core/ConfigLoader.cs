@@ -43,6 +43,13 @@ public static class ConfigLoader
         }
     }
 
+    /// <summary>
+    /// Directory where optional BattleLuck helper tools are extracted on first load.
+    /// Tools are kept below the config root so a server owner can inspect or remove
+    /// them without touching the plugin binary.
+    /// </summary>
+    public static string ToolsRoot => Path.Combine(ConfigRoot, "tools");
+
     public static AIConfig LoadAIConfig()
     {
         if (_aiConfig != null)
@@ -294,35 +301,75 @@ public static class ConfigLoader
             Directory.CreateDirectory(ConfigRoot);
             var assembly = typeof(BattleLuckPlugin).Assembly;
             var assemblyName = assembly.GetName().Name ?? nameof(BattleLuckPlugin);
-            var resourcePrefix = $"{assemblyName}.config.BattleLuck.";
-            var deployed = 0;
-            foreach (var resourceName in assembly.GetManifestResourceNames())
+            var configDeployed = DeployEmbeddedFiles(
+                assembly,
+                $"{assemblyName}.config.BattleLuck.",
+                ConfigRoot);
+            var toolsDeployed = DeployEmbeddedFiles(
+                assembly,
+                $"{assemblyName}.tools.",
+                ToolsRoot);
+
+            if (configDeployed > 0 || toolsDeployed > 0)
             {
-                if (!resourceName.StartsWith(resourcePrefix, StringComparison.Ordinal))
-                    continue;
-                var relativePath = ToRelativeConfigPath(resourceName, resourcePrefix);
-                if (string.IsNullOrEmpty(relativePath))
-                    continue;
-                var targetPath = Path.Combine(ConfigRoot, relativePath);
-                if (File.Exists(targetPath))
-                    continue;
-                var targetDir = Path.GetDirectoryName(targetPath);
-                if (!string.IsNullOrEmpty(targetDir))
-                    Directory.CreateDirectory(targetDir);
-                using var stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream == null)
-                    continue;
-                using var file = File.Create(targetPath);
-                stream.CopyTo(file);
-                deployed++;
+                var details = new List<string>();
+                if (configDeployed > 0)
+                    details.Add($"{configDeployed} config file(s)");
+                if (toolsDeployed > 0)
+                    details.Add($"{toolsDeployed} tool file(s)");
+                BattleLuckPlugin.LogInfo($"[ConfigLoader] Extracted {string.Join(" and ", details)} under {ConfigRoot}");
             }
-            if (deployed > 0)
-                BattleLuckPlugin.LogInfo($"[ConfigLoader] Deployed {deployed} default config file(s) to {ConfigRoot}");
         }
         catch (Exception ex)
         {
-            BattleLuckPlugin.LogWarning($"[ConfigLoader] Failed to deploy default configs: {ex.Message}");
+            // Allow a later reload/startup to retry if the config directory was
+            // temporarily unavailable (for example while the server is stopping).
+            lock (_defaultsEnsuredLock)
+            {
+                _defaultsEnsured = false;
+            }
+            BattleLuckPlugin.LogWarning($"[ConfigLoader] Failed to extract embedded defaults/tools: {ex.Message}");
         }
+    }
+
+    static int DeployEmbeddedFiles(Assembly assembly, string resourcePrefix, string destinationRoot)
+    {
+        var deployed = 0;
+        foreach (var resourceName in assembly.GetManifestResourceNames())
+        {
+            if (!resourceName.StartsWith(resourcePrefix, StringComparison.Ordinal))
+                continue;
+
+            var relativePath = ToRelativeResourcePath(resourceName, resourcePrefix);
+            if (string.IsNullOrEmpty(relativePath))
+                continue;
+
+            var targetPath = Path.GetFullPath(Path.Combine(destinationRoot, relativePath));
+            var rootPath = Path.GetFullPath(destinationRoot)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            if (!targetPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                BattleLuckPlugin.LogWarning($"[ConfigLoader] Skipping embedded resource outside destination: {resourceName}");
+                continue;
+            }
+
+            // Defaults are intentionally additive. Never overwrite a server owner's
+            // config, generated event, prompt, or tool changes during an update.
+            if (File.Exists(targetPath))
+                continue;
+
+            var targetDir = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(targetDir))
+                Directory.CreateDirectory(targetDir);
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+                continue;
+            using var file = File.Create(targetPath);
+            stream.CopyTo(file);
+            deployed++;
+        }
+        return deployed;
     }
 
     static T? LoadJson<T>(string path, bool optional = false) where T : class
@@ -357,7 +404,7 @@ public static class ConfigLoader
         AllowTrailingCommas = true
     };
 
-    static string? ToRelativeConfigPath(string resourceName, string resourcePrefix)
+    static string? ToRelativeResourcePath(string resourceName, string resourcePrefix)
     {
         var remainder = resourceName[resourcePrefix.Length..];
         var parts = remainder.Split('.', StringSplitOptions.RemoveEmptyEntries);

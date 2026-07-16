@@ -2,6 +2,11 @@
 
 All runtime configuration lives in this directory. JSON files are created or updated by the plugin and can be edited while the server is stopped.
 
+When only `BattleLuck.dll` is installed, the first server load extracts missing
+defaults here and places the optional developer helper files in `tools/`. Existing
+files are never overwritten. Credentials and `.env` files must be created locally;
+they are intentionally not embedded in the DLL.
+
 ## Main files
 
 - `ai_config.json` — provider, model, safety, and approval settings.

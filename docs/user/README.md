@@ -19,8 +19,11 @@ BattleLuck is a V Rising dedicated-server plugin with action-driven events, nati
    ```
 3. **Copy files to server:**
    - Copy `bin/Release/net6.0/BattleLuck.dll` to `<VRisingServer>/BepInEx/plugins/`
-   - Copy `config/BattleLuck/` to `<VRisingServer>/BepInEx/config/BattleLuck/`
-4. **Restart the V Rising server**
+   - Copying `config/BattleLuck/` is optional when using the DLL defaults; the
+     first load extracts missing files automatically.
+4. **Restart the V Rising server**. The DLL creates
+   `<VRisingServer>/BepInEx/config/BattleLuck/` and its `tools/` subdirectory,
+   without overwriting existing server files.
 
 ### Thunderstore Installation (Recommended)
 

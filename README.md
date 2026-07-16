@@ -10,8 +10,15 @@ Event behavior is defined through configuration and validated before execution. 
 
 1. Install BepInEx for V Rising on the dedicated server.
 2. Install the package with a Thunderstore-compatible mod manager, or copy the package files into the server's `BepInEx` folder.
-3. Start the server once, then edit files under `BepInEx/config/BattleLuck/`, including event definitions inside `BepInEx/config/BattleLuck/events/<eventId>/`.
-4. Use `.help` in game to see the commands available to your permission level.
+3. Start the server once. `BattleLuck.dll` extracts missing default config files and
+   optional helper tools to `BepInEx/config/BattleLuck/` and
+   `BepInEx/config/BattleLuck/tools/`.
+4. Edit files under `BepInEx/config/BattleLuck/`, including event definitions inside `BepInEx/config/BattleLuck/events/<eventId>/`.
+5. Use `.help` in game to see the commands available to your permission level.
+
+Extraction is additive: the DLL never overwrites an existing config, event, prompt,
+or tool file, so upgrades preserve server-owner changes. Provider credentials and
+`.env` files are not embedded in the DLL; configure those locally on the server.
 
 AI is server-owned and local-first. Every installation includes the `.ai` command
 surface, but no model weights or provider credentials are bundled. A server owner
