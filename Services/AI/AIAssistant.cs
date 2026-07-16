@@ -1589,9 +1589,9 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
             var seqSample = string.Join(", ", GetKnownSequenceNames().Take(40));
             var configuredPrompt = LoadOperatorPrompt(prefabSample, buffSample, seqSample);
             if (!string.IsNullOrWhiteSpace(configuredPrompt))
-                return configuredPrompt;
+            return BattleLuckPlugin.Roadmap?.BuildSystemPrompt(configuredPrompt) ?? configuredPrompt;
 
-            return GetBuiltInOperatorPrompt();
+            return BattleLuckPlugin.Roadmap?.BuildSystemPrompt(GetBuiltInOperatorPrompt()) ?? GetBuiltInOperatorPrompt();
         }
 
         private string? LoadOperatorPrompt(string prefabSample, string buffSample, string seqSample)

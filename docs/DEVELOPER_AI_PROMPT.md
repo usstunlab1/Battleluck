@@ -22,6 +22,8 @@ BattleLuck is a **BepInEx plugin** for V Rising (net6.0, Unity DOTS ECS) that ad
 
 ## Architecture
 
+The server-owned roadmap and prompt contracts live in `config/BattleLuck/roadmap.json` and `config/BattleLuck/prompts/`. `RoadmapService` supplies read-only roadmap context to the in-server LLM; developer operators can inspect it with `.roadmap.status`, `.roadmap.show`, and `.roadmap.prompt`. Keep roadmap edits reviewed and configuration-driven.
+
 ### Design Patterns
 - **Plugin Architecture:** BepInEx mod with Harmony patches for hooking V Rising game events
 - **Event-Driven:** `ProjectMEventRouter` broadcasts game events (death, action, mode changes)

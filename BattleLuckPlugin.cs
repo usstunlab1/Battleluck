@@ -45,6 +45,7 @@ public class BattleLuckPlugin : BasePlugin
     public static PlayerEquipmentTrackingService? EquipmentTracker { get => Core.EquipmentTracker; private set => Core.EquipmentTracker = value; }
     public static MerchantCommandService? MerchantCommands { get => Core.MerchantCommands; private set => Core.MerchantCommands = value; }
     public static ClanTaskService? ClanTasks { get => Core.ClanTasks; private set => Core.ClanTasks = value; }
+    public static RoadmapService? Roadmap { get => Core.Roadmap; private set => Core.Roadmap = value; }
     static DiscordBridgeController? _discordBridge;
     static AiLoggerController? _aiLogger;
     static WebhookController? _webhookController;
@@ -484,6 +485,10 @@ public class BattleLuckPlugin : BasePlugin
                 _clanTaskGameAdapter = new ClanTaskGameAdapter(ClanTasks, playerState, GameModes);
                 Log?.LogInfo("[BattleLuck] Clan task service initialized.");
 
+                Roadmap = new RoadmapService();
+                Roadmap.Initialize();
+                Log?.LogInfo("[BattleLuck] Roadmap and role prompt service initialized.");
+
                 // Initialize Dev Session Service
                 DevSession = new DevSessionService(playerState, flow);
                 Log?.LogInfo("[BattleLuck] Dev session service initialized.");
@@ -688,6 +693,8 @@ public class BattleLuckPlugin : BasePlugin
         _clanTaskGameAdapter = null;
         ClanTasks?.Dispose();
         ClanTasks = null;
+        Roadmap?.Dispose();
+        Roadmap = null;
         ZoneMap?.Shutdown();
         ZoneMap = null;
         AiGroupProjectMBridge?.Dispose();

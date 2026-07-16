@@ -474,3 +474,10 @@ Total: 261
 - zone.buff.apply
 - zone.buff.remove
 - zoneinfo
+
+## Roadmap administration commands
+
+- `.roadmap.status` — list the server roadmap and milestone states.
+- `.roadmap.show <milestoneId>` — inspect dependencies and acceptance criteria.
+- `.roadmap.prompt <llm|developer>` — inspect a role prompt contract.
+- `.roadmap.reload` — reload `config/BattleLuck/roadmap.json` and role prompts.

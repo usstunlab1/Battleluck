@@ -73,6 +73,8 @@ For public releases, keep `config/BattleLuck/ai_config.json` local-first and sec
 
 ## Prompt Pattern
 
+The in-server prompt contract is extended by `RoadmapService`, which appends the active milestones and role guardrails from `config/BattleLuck/roadmap.json`. See [LLM server operations](LLM_SERVER.md), [developer server operations](DEVELOPER_SERVER.md), and [the prompt system](PROMPT_SYSTEM.md) for the two server roles.
+
 BattleLuck prompts should stay boring and strict:
 
 1. Identity: BattleLuck Game Session Director AI for a V Rising BepInEx server mod.

@@ -40,6 +40,7 @@ internal static class Core
     public static PlayerEquipmentTrackingService? EquipmentTracker { get; internal set; }
     public static MerchantCommandService? MerchantCommands { get; internal set; }
     public static ClanTaskService? ClanTasks { get; internal set; }
+    public static RoadmapService? Roadmap { get; internal set; }
 
     /// <summary>True once <see cref="InitializeAfterLoaded"/> has completed.</summary>
     public static bool IsInitialized { get; internal set; }
