@@ -202,7 +202,7 @@ All action names must exist in `actions_catalog.json` under the `"registered"` a
 dotnet build BattleLuck.sln
 
 # Build with specific properties
-dotnet build BattleLuck.sln --no-restore /p:GenerateReadme=false /p:DeployToServer=false
+dotnet build BattleLuck.sln --no-restore /p:DeployBattleLuck=false
 
 # Run tests
 dotnet test BattleLuck.sln

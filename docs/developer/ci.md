@@ -1,7 +1,8 @@
 # Continuous Integration (CI)
 
-This document describes the CI build-verification setup for BattleLuck and the
-**stage-gating** rule that governs the in-progress architecture refactor.
+This document describes the CI build-verification setup for BattleLuck. The
+historical stage-gating table at the end is retained for traceability; it is not
+a second build system or a current roadmap.
 
 ## Why CI must come first
 
@@ -54,27 +55,16 @@ The workflow injects this token into the existing NuGet source at runtime via
 `dotnet nuget update source` using an environment variable, so the token is
 never committed to the repository and is masked in logs.
 
-### 2. V Rising reference assemblies
+### 2. Build and reference packages
 
-`BattleLuck.csproj` resolves a large set of references from a local V Rising
-server layout rather than from NuGet:
-
-- `$(CorePath)` → `BepInEx.Core.dll`, `BepInEx.Unity.IL2CPP.dll`, `0Harmony.dll`, `Iced.dll`
-- `$(InteropPath)` → `Stunlock.Core.dll`, `ProjectM*.dll`, `Unity*.dll`
-- `$(UnityLibsPath)` → the Unity managed libraries
-
-`$(VRisingServerRoot)` (and the derived paths above) must point at a location on
-the runner that actually contains these assemblies. Options:
-
-- Provide them through the V Rising reference-assembly NuGet packages already
-  declared in `Directory.Packages.props` (`VampireReferenceAssemblies`,
-  `Il2CppInterop.Runtime`) and repoint `CorePath` / `InteropPath` /
-  `UnityLibsPath` at the restored package contents, **or**
-- Restore a V Rising dedicated-server install on the runner and set
-  `VRISING_SERVER_ROOT` accordingly.
-
-Until one of these is wired up, the **Build** step will fail to resolve
-`ProjectM`/`Unity`/`BepInEx` types even after a successful package restore.
+`BattleLuck.csproj` resolves the BepInEx IL2CPP framework, V Rising reference
+assemblies, Il2CppInterop.Runtime, HookDOTS.API, and VCF from the NuGet sources
+declared in `NuGet.Config` and versions pinned in `Directory.Packages.props`.
+CI therefore needs a successful restore and the `NUGET_GITHUB_PAT` secret when
+the private GitHub Packages source is required. Compilation does not depend on a
+local server-root variable or ad-hoc reference-path properties. Deployment is a
+separate local-build concern: use `DeployBattleLuck=true` with
+`ServerPluginPath` and `ServerConfigPath`, and leave deployment disabled in CI.
 
 ## Package lock file
 

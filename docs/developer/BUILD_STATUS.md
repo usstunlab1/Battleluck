@@ -2,24 +2,24 @@
 
 ## Current State
 
-Latest validated Release build status (May 24, 2026):
+Latest validated Release build status (July 16, 2026):
 
 - Status: success
 - Output: `bin/Release/net6.0/BattleLuck.dll`
 - Errors: 0
-- Warnings: 4 (NU1507 - multiple NuGet package sources)
+- Warnings: 13 (existing nullable, unused-field, and unused-variable warnings)
 
 ## Typical Warnings
 
-- `NU1507` (x2): multiple NuGet package sources without source mapping
+- Nullable analysis and unused-member warnings remain in legacy/runtime paths;
+  they do not block the Release build.
 
 ## Resolved Warnings / Fixes
 
 | Item | File | Detail |
 |------|------|--------|
 | `CS8602` | `SessionController.cs` | Added `zone != null` guard before `zone.ExitRadius` access in DOT boundary tick |
-| Dead MSBuild condition | `BattleLuck.csproj` | `USERPROFILE` fallback for `VRisingServerRoot` was shadowed by the hardcoded Steam path — reordered so env-var → USERPROFILE → Steam default |
-| CI deploy side-effect | `BattleLuck.csproj` | `BuildToServer` target now skips in GitHub Actions (`GITHUB_ACTIONS != true`) |
+| Deployment | `BattleLuck.csproj` | `BuildToServer` is opt-in and runs only when `DeployBattleLuck=true`; destinations use `ServerPluginPath` and `ServerConfigPath` |
 | Hardcoded mode list | `SessionController.cs` | `Initialize()` now iterates `_registry.GetRegisteredModes()` instead of a literal string array |
 | Fixed-duration override | `SessionController.cs` | Session time limit now reads `MatchDurationMinutes` from `session.json`; falls back to 120 s only when the value is 0 |
 | Respawn suppress | `SessionController.cs` | `_recentlyDied` changed from `HashSet` to `Dictionary<ulong,int>`; suppresses walk-out penalty for 3 ticks instead of 1 |

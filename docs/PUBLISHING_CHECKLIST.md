@@ -28,7 +28,7 @@ Never package secrets or server state: `.env`, credentials, model weights, logs,
 
 ```powershell
 dotnet restore .\BattleLuck.sln
-dotnet build .\BattleLuck.sln --no-restore /p:GenerateReadme=false /p:DeployToServer=false
+dotnet build .\BattleLuck.sln --no-restore /p:DeployBattleLuck=false
 Get-Content .\manifest.json | ConvertFrom-Json | Out-Null
 ```
 

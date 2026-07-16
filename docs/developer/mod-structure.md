@@ -6,87 +6,30 @@ Understanding the role of each folder prevents confusion and keeps BattleLuck or
 
 **What this is:** The BepInEx entry point. Every mod has exactly one.
 
-The class decorated with `[BepInPlugin]` is what BepInEx finds and loads. It overrides `Load()` which is called once at startup. This is where you wire everything together: Harmony patches, VCF registration, config file setup.
+`BattleLuckPlugin` is decorated with the hard-coded BattleLuck BepInEx identity
+and overrides `Load()`. At startup it deploys defaults, starts the config watcher,
+loads schematics, discovers and validates modes, initializes ProjectM event
+routing, applies Harmony (with per-class fallback), scans the custom command
+dispatcher, and registers VCF commands. World-bound services are constructed only
+after the server world is ready by `InitializationPatch`/`ServerTickHook`.
 
-```csharp
-[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-[BepInDependency("gg.deca.VampireCommandFramework")]
-public class Plugin : BasePlugin
-{
-    internal static Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
-    internal static Plugin Instance;
-
-    public override void Load()
-    {
-        Instance = this;
-        Harmony.PatchAll(Assembly.GetExecutingAssembly());
-        CommandRegistry.RegisterAll();
-        Log.LogInfo($"{MyPluginInfo.PLUGIN_NAME} loaded.");
-    }
-
-    public override bool Unload()
-    {
-        CommandRegistry.UnregisterAssembly();
-        Harmony.UnpatchSelf();
-        return true;
-    }
-}
-```
-
-**Keep `BattleLuckPlugin.cs` thin.** It initialises the framework; it does not contain business logic.
+Keep the entry point focused on lifecycle wiring; business logic belongs in
+`Core/`, `Services/`, and `ECS/`.
 
 ## `Core/` - Static Service Locator
 
 **What this is:** The static service locator for the mod. Referenced everywhere.
 
-`Core` is a static class that holds references to game systems and services after the world has loaded. It exposes them as static properties so commands and patches can reach them without passing instances around.
+`Core` is a static class that exposes `VRisingCore.Server` and
+`VRisingCore.EntityManager` after the world has loaded, and stores the live
+BattleLuck service references used by commands and patches. The actual service
+construction is centralized in `BattleLuckPlugin.TryInitializeCore()` and guarded
+by one initialization lock.
 
-```csharp
-internal static class Core
-{
-    public static World Server { get; } = GetWorld("Server")
-        ?? throw new Exception("Server world not found.");
-    public static EntityManager EntityManager { get; } = Server.EntityManager;
-
-    // Game systems, resolved once in InitializeAfterLoaded()
-    public static PrefabCollectionSystem PrefabCollectionSystem { get; internal set; }
-    public static GameDataSystem GameDataSystem { get; internal set; }
-
-    // Your own services
-    public static PlayerStateService Players { get; internal set; }
-    public static SessionController Session { get; internal set; }
-
-    internal static void InitializeAfterLoaded()
-    {
-        PrefabCollectionSystem = Server.GetExistingSystemManaged<PrefabCollectionSystem>();
-        GameDataSystem = Server.GetExistingSystemManaged<GameDataSystem>();
-        Players = new PlayerStateService();
-        Session = new SessionController();
-        Plugin.Instance.Log.LogInfo("Core initialised.");
-    }
-
-    static World GetWorld(string name)
-        => World.s_AllWorlds.ToArray().FirstOrDefault(w => w.Name == name);
-}
-```
-
-The one-shot init patch that calls this typically lives in `Patches/InitializationPatch.cs`:
-
-```csharp
-[HarmonyPatch(typeof(SpawnTeamSystem_OnPersistenceLoad), nameof(SpawnTeamSystem_OnPersistenceLoad.OnUpdate))]
-static class InitializationPatch
-{
-    static bool _initialized;
-
-    [HarmonyPostfix]
-    static void OneShot_AfterLoad()
-    {
-        if (_initialized) return;
-        _initialized = true;
-        Core.InitializeAfterLoaded();
-    }
-}
-```
+The one-shot init patch in `Patches/InitializationPatch.cs` hooks
+`WarEventRegistrySystem.RegisterWarEventEntities` and calls
+`Core.InitializeAfterLoaded()` once. `ServerTickHook` retries initialization from
+`BuffSystem_Spawn_Server.OnUpdate` when needed and then drives the server tick.
 
 This pattern ensures services are only set up once and only after the game is ready for them.
 

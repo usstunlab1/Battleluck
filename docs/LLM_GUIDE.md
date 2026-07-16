@@ -157,7 +157,7 @@ rg -n "discord[.]com/api/webhooks" .
 rg -n "CLOUDFLARE_AI_API_TOKEN\s*[^\s#]+"
 rg -n "GOOGLE_AI_API_KEY\s*[^\s#]+"
 git status --short
-dotnet build .\BattleLuck.sln --no-restore /p:GenerateReadme=false /p:DeployToServer=false
+dotnet build .\BattleLuck.sln --no-restore /p:DeployBattleLuck=false
 ```
 
 If anything real appears, remove it and rotate the exposed credential.

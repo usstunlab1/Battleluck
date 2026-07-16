@@ -1,14 +1,16 @@
 # BattleLuck
 
-![BattleLuck roadmap](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.2/docs/assets/roadmap-header.png)
+![BattleLuck roadmap](docs/assets/roadmap-header.png)
 
-BattleLuck is a server-side BepInEx plugin for V Rising. Its game-event actions run through the native ECS/action pipeline, player state is saved as rollback snapshots, and optional local LLM tools can propose verified event and mod changes. LLM network work runs asynchronously; approved native-world mutations are queued onto the server main thread for safe execution.
+BattleLuck is a server-side BepInEx IL2CPP plugin for V Rising dedicated servers. It provides configurable competitive and cooperative game events, managed player sessions, rollback-safe player state and loadouts, NPC and boss control, progression and death-prevention systems, teleports, zones, schematics, and an ECS-backed action pipeline.
+
+Event behavior is defined through configuration and validated before execution. Optional local AI tools can assist with verified action discovery, event authoring, runtime announcements, and approval-gated configuration changes. Network-based AI work runs asynchronously, while ProjectM and Unity ECS mutations are dispatched to the server main thread.
 
 ## Install
 
 1. Install BepInEx for V Rising on the dedicated server.
 2. Install the package with a Thunderstore-compatible mod manager, or copy the package files into the server's `BepInEx` folder.
-3. Start the server once, then edit `BepInEx/config/BattleLuck/*.json`.
+3. Start the server once, then edit files under `BepInEx/config/BattleLuck/`, including event definitions inside `BepInEx/config/BattleLuck/events/<eventId>/`.
 4. Use `.help` in game to see the commands available to your permission level.
 
 AI is optional and local-first. It is disabled until a server owner configures a provider and explicitly enables the requested features.
@@ -21,9 +23,9 @@ AI is optional and local-first. It is disabled until a server owner configures a
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
 - Optional local LLM prompts for event and mod authoring with approval gates and main-thread-safe execution.
 
-## Commands
+## Common commands
 
-All commands use the `.` prefix. Player commands are available to everyone; admin commands require server permissions.
+All commands use the `.` prefix. This is a common-command overview, not the complete command surface. Use `.help` in game for the live permission-aware list.
 
 ### Player commands
 
@@ -42,6 +44,10 @@ All commands use the `.` prefix. Player commands are available to everyone; admi
 
 ```text
 .reload                        Reload BattleLuck configuration
+.start                         Force-start your prepared event session
+.rollback <operationId>        Roll back a pending AI event operation
+.swapteam [closest|balance]    Balance or move event teams
+.swapteam.ai [options]         Balance teams and announce with AI
 .event.create <eventId>        Clone Bloodbath into a custom event
 .event.start <mode>            Start and enter an event mode
 .event.end <mode>              End a mode's active sessions

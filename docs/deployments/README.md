@@ -32,12 +32,12 @@ The package manifest must be valid JSON:
 ```json
 {
   "name": "BattleLuck",
-  "version_number": "1.0.0",
-  "website_url": "https://github.com/usstunlab1/Battleluck-",
-  "description": "Competitive arena game modes, event flow, and optional AI tooling for V Rising dedicated servers.",
+  "version_number": "1.1.1",
+  "website_url": "https://github.com/usstunlab1/Battleluck",
+  "description": "Server-side V Rising arena events, NPC control, progression, and optional local AI authoring.",
   "dependencies": [
     "BepInEx-BepInExPack_V_Rising-1.733.2",
-    "deca-VampireCommandFramework-0.10.4"
+    "deca-VampireCommandFramework-0.11.0"
   ]
 }
 ```
@@ -45,9 +45,22 @@ The package manifest must be valid JSON:
 ### Build
 
 ```powershell
-dotnet restore .\BattleLuck.sln
-dotnet build .\BattleLuck.sln --no-restore /p:GenerateReadme=false /p:DeployToServer=false
+# Build only (BuildToServer is disabled by default)
+dotnet build .\BattleLuck.sln -c Release
+
+# Build and deploy using the defaults in BattleLuck.csproj
+dotnet build .\BattleLuck.sln -c Release /p:DeployBattleLuck=true
+
+# Build and deploy to custom server paths
+dotnet build .\BattleLuck.sln -c Release `
+  /p:DeployBattleLuck=true `
+  /p:ServerPluginPath="C:\Path\BepInEx\plugins\BattleLuck" `
+  /p:ServerConfigPath="C:\Path\BepInEx\config\BattleLuck"
 ```
+
+`BuildToServer` runs only when `DeployBattleLuck` is exactly `true`. The deployment
+properties are `ServerPluginPath` and `ServerConfigPath`; older root-variable and
+deployment-switch examples do not apply to this project.
 
 ### Release Zip
 
@@ -86,7 +99,7 @@ rg -n "cfat[_]" .
 rg -n "cfut[_]" .
 rg -n "discord[.]com/api/webhooks" .
 git status --short
-dotnet build .\BattleLuck.sln --no-restore /p:GenerateReadme=false /p:DeployToServer=false
+dotnet build .\BattleLuck.sln --no-restore /p:DeployBattleLuck=false
 ```
 
 Do not publish `.env`, logs, player snapshots, or AI operation logs.

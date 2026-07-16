@@ -11,13 +11,13 @@ You register a **patch class** that targets a specific method. Harmony rewrites 
 In your plugin, you apply all patches at startup:
 
 ```csharp
-internal static class Harmony
+internal static class HarmonyBootstrap
 {
-    internal static Harmony Instance;
+    internal static HarmonyLib.Harmony Instance;
 
     public static void Apply()
     {
-        Instance = new Harmony(MyPluginInfo.PLUGIN_GUID);
+        Instance = new HarmonyLib.Harmony("gg.battleluck.patches");
         Instance.PatchAll(Assembly.GetExecutingAssembly());
     }
 
@@ -221,25 +221,7 @@ internal static class AbilityRunScriptsSystemPatch
 
 ## One-Shot Patches
 
-Sometimes you only need a patch to run once, typically to detect when the world has finished loading. After it fires, unregister it so it never runs again:
-
-```csharp
-[HarmonyPatch(typeof(SpawnTeamSystem_OnPersistenceLoad), nameof(SpawnTeamSystem_OnPersistenceLoad.OnUpdate))]
-public static class InitializationPatch
-{
-    [HarmonyPostfix]
-    public static void OneShot_AfterLoad_InitializationPatch()
-    {
-        Core.InitializeAfterLoaded();
-        Plugin.Harmony.Unpatch(
-            typeof(SpawnTeamSystem_OnPersistenceLoad).GetMethod("OnUpdate"),
-            typeof(InitializationPatch).GetMethod("OneShot_AfterLoad_InitializationPatch")
-        );
-    }
-}
-```
-
-`SpawnTeamSystem_OnPersistenceLoad.OnUpdate` is a reliable hook for detecting when the server world is fully ready. After `InitializeAfterLoaded()` runs, the patch unplugs itself so it adds zero overhead from that point on.
+Sometimes you only need a patch to run once, typically to detect when the world has finished loading. BattleLuck hooks `WarEventRegistrySystem.RegisterWarEventEntities` and guards the postfix with an initialization flag before calling `Core.InitializeAfterLoaded()`. A second patch on `BuffSystem_Spawn_Server.OnUpdate` retries initialization and drives the runtime tick as a compatibility safety net for game-version differences.
 
 ## Ordering Patches
 

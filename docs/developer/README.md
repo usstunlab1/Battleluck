@@ -4,7 +4,7 @@ This guide follows the standard V Rising mod development patterns from the [V Ri
 
 ## Architecture Overview
 
-BattleLuck is a V Rising server-side mod built on:
+BattleLuck is a V Rising dedicated-server BepInEx IL2CPP plugin built on:
 
 - **BepInEx** — Plugin loader and base framework
 - **Harmony** — Method hooking for game system interception
@@ -15,76 +15,63 @@ BattleLuck is a V Rising server-side mod built on:
 
 ## Core Patterns
 
-### Plugin.cs - Entry Point
+### BattleLuckPlugin.cs - Actual entry point
 
-The BepInEx entry point. Decorated with `[BepInPlugin]`, overrides `Load()` which is called once at startup.
+`BattleLuckPlugin.Load()` runs before the V Rising server world exists. It deploys
+default configuration, loads schematics, discovers and validates configured modes,
+initializes the ProjectM event router, applies Harmony patches, scans the custom
+command dispatcher, and registers VampireCommandFramework commands. It does not
+construct world-bound services or query players during `Load()`.
 
-```csharp
-[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-[BepInDependency("gg.deca.VampireCommandFramework")]
-public class BattleLuckPlugin : BasePlugin
-{
-    internal static Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
+The relevant startup sequence is:
 
-    public override void Load()
-    {
-        Harmony.PatchAll(Assembly.GetExecutingAssembly());
-        CommandRegistry.RegisterAll();
-    }
+1. `ConfigLoader.EnsureDefaultsDeployed()`, `ModeConfigLoader.EnsureWatcher()`,
+   and `SchematicLoader.LoadAll()`.
+2. `GameModeRegistry.LoadAllModes()` plus action, zone, kit, prefab, schematic,
+   flow, and analytics validation for every discovered mode.
+3. `ProjectMEventRouter.Initialize()` and Harmony patch registration. If the
+   assembly-wide patch pass fails, critical patch classes are applied individually.
+4. `BattleLuckCommandDispatcher.EnsureScanned()` and VCF command registration.
 
-    public override bool Unload()
-    {
-        CommandRegistry.UnregisterAssembly();
-        Harmony.UnpatchSelf();
-        return true;
-    }
-}
-```
-
-**Important:** The game world does not exist at plugin load time. Do not access players, entities, or game data in `Load()`.
-
-See [Mod Structure](mod-structure.md) for complete folder breakdown.
+The server world is initialized later by `InitializationPatch`, with
+`ServerTickHook` retrying as a safety net when a game-version-specific boot hook
+does not fire. See [Mod Structure](mod-structure.md) for the complete folder
+breakdown.
 
 ### Core.cs - Static Service Locator
 
 The static service locator holds references to game systems and services after the world has loaded.
 
-```csharp
-internal static class Core
-{
-    public static World Server { get; } = GetWorld("Server");
-    public static EntityManager EntityManager { get; } = Server.EntityManager;
-    public static PrefabCollectionSystem PrefabCollectionSystem { get; internal set; }
-    public static GameDataSystem GameDataSystem { get; internal set; }
-    public static PlayerStateService Players { get; internal set; }
-
-    internal static void InitializeAfterLoaded()
-    {
-        PrefabCollectionSystem = Server.GetExistingSystemManaged<PrefabCollectionSystem>();
-        Players = new PlayerStateService();
-    }
-}
-```
+`Core` exposes `VRisingCore.Server` and `VRisingCore.EntityManager` after the
+world is ready, and stores the live BattleLuck service references used by commands,
+patches, and the tick loop. `Core.InitializeAfterLoaded()` delegates to
+`BattleLuckPlugin.TryInitializeCore()`, which initializes the player state,
+session, progression, teleport, loadout, death-prevention, NPC, map, and AI
+services under one initialization lock.
 
 ### One-Shot Initialization
 
-A Harmony patch fires once when the server world finishes booting:
+A Harmony postfix on `WarEventRegistrySystem.RegisterWarEventEntities` performs
+the one-shot initialization. `BuffSystem_Spawn_Server.OnUpdate` is also patched
+as a periodic retry and drives `BattleLuckPlugin.ServerTick(deltaSeconds)`, which
+processes sessions, the main-thread dispatcher, AI queues, NPCs, and other runtime
+services.
 
-```csharp
-[HarmonyPatch(typeof(SpawnTeamSystem_OnPersistenceLoad), nameof(SpawnTeamSystem_OnPersistenceLoad.OnUpdate))]
-static class InitializationPatch
-{
-    static bool _initialized;
+### Runtime services and validation
 
-    [HarmonyPostfix]
-    static void OneShot_AfterLoad()
-    {
-        if (_initialized) return;
-        _initialized = true;
-        Core.InitializeAfterLoaded();
-    }
-}
-```
+The runtime is intentionally service-oriented. `SessionController` owns player
+event sessions; `GameModeRegistry`, `EventDefinitionLoader`, and
+`FlowActionExecutor`/`EventRuntimeController` load and execute declarative modes.
+Validators reject or warn about invalid actions, zones, kits, prefabs, schematics,
+flows, and analytics before a mode is registered. Supporting services include
+`NpcControlService`, `PlayerLoadoutService`, `PlayerProgressionService`,
+`TeleportService`, `DeathPreventionService`, and `SessionCleanupService`.
+
+Optional `AIAssistant`, `AiGroupProjectMLlmBridge`, and `LocalAiRuntimeManager`
+features perform network or model work off-thread. Discord and webhook controllers
+also enqueue their game-facing notifications. Any ProjectM or Unity ECS mutation is
+approval-gated and queued through the main-thread dispatcher before it touches the
+live world.
 
 ## Project Folders
 
@@ -122,23 +109,29 @@ For alternatives, see the [Development Setup Wiki](https://wiki.vrisingmods.com/
 ### Build Commands
 
 ```powershell
-# Standard build
+# Build only (deployment is disabled by default)
 dotnet build BattleLuck.sln -c Release
 
-# Build without deploying to server
-dotnet build BattleLuck.sln -c Release /p:DeployToServer=false /p:GenerateReadme=false
+# Explicitly disable deployment
+dotnet build BattleLuck.sln -c Release /p:DeployBattleLuck=false
 ```
 
 ### Deploy to Server
 
-Set the `VRISING_SERVER_ROOT` environment variable:
-
 ```powershell
-$env:VRISING_SERVER_ROOT = "C:\Path\To\VRisingServer"
-dotnet build BattleLuck.sln -c Release
+# Build and deploy using the defaults in BattleLuck.csproj
+dotnet build BattleLuck.sln -c Release /p:DeployBattleLuck=true
+
+# Or provide explicit plugin/config destinations
+dotnet build BattleLuck.sln -c Release `
+  /p:DeployBattleLuck=true `
+  /p:ServerPluginPath="C:\Path\BepInEx\plugins\BattleLuck" `
+  /p:ServerConfigPath="C:\Path\BepInEx\config\BattleLuck"
 ```
 
-The `.csproj` includes a `BuildToServer` target that copies the DLL and config.
+The `.csproj` `BuildToServer` target runs only when `DeployBattleLuck` is exactly
+`true`. It copies the plugin DLLs, recursive `config/BattleLuck/` files, and the
+server reference inventory to `ServerPluginPath` and `ServerConfigPath`.
 
 ### Git Setup (Optional)
 
@@ -150,7 +143,11 @@ Create a GitHub account at [github.com/join](https://github.com/join) and use:
 
 ## IL2CPP Interop
 
-V Rising uses IL2CPP, so interop assemblies in `BepInEx/interop` provide managed signatures for game types.
+V Rising uses IL2CPP, so interop assemblies provide managed signatures for game
+types. The project resolves its BepInEx, VampireReferenceAssemblies,
+Il2CppInterop.Runtime, HookDOTS.API, and VCF dependencies through the NuGet
+configuration; a local server install is only needed when you deploy or inspect
+live interop data.
 
 **Key considerations:**
 
