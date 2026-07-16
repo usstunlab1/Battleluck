@@ -1,5 +1,13 @@
 # BattleLuck
 
+<p align="center">
+  <img src="icon.png" alt="BattleLuck V Rising Mods" width="180">
+</p>
+
+![BattleLuck roadmap](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.1/docs/assets/roadmap-header.png)
+
+![BattleLuck AI prompt pipeline](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.1/docs/assets/prompt-pipeline-header.png)
+
 BattleLuck is a server-side BepInEx plugin for V Rising. It adds event-driven arena modes, controlled NPC encounters, player loadouts, progression, teleporting, schematics, and optional local AI tools.
 
 ## Install
@@ -7,7 +15,7 @@ BattleLuck is a server-side BepInEx plugin for V Rising. It adds event-driven ar
 1. Install BepInEx for V Rising on the dedicated server.
 2. Install the package with a Thunderstore-compatible mod manager, or copy the package files into the server's `BepInEx` folder.
 3. Start the server once, then edit `BepInEx/config/BattleLuck/*.json`.
-4. Use `.bl.help` in game to see the commands available to your permission level.
+4. Use `.help` in game to see the commands available to your permission level.
 
 AI is optional and local-first. It is disabled until a server owner configures a provider and explicitly enables the requested features.
 
@@ -18,6 +26,53 @@ AI is optional and local-first. It is disabled until a server owner configures a
 - Player event sessions, loadouts, progression, death-prevention charges, and rollback snapshots.
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
 - Optional local LLM prompts for event and mod authoring with approval gates.
+
+## Commands
+
+All commands use the `.` prefix. Player commands are available to everyone; admin commands require server permissions.
+
+### Player commands
+
+```text
+.help                          Show available BattleLuck commands
+.toggleenter [modeName]        Join an event zone
+.toggleleave                   Leave an event cleanly and restore your state
+.exit                          Force-exit the current event
+.score                         Show the current scoreboard
+.elo                           Show Colosseum rating
+.ai <message>                  Ask the optional AI assistant
+.aistatus                      Show local AI status
+```
+
+### Admin commands
+
+```text
+.reload                        Reload BattleLuck configuration
+.event.start <mode>            Start and enter an event mode
+.event.end <mode>              End a mode's active sessions
+.event.status                  Show active events and player counts
+.modelist                      List registered modes
+.bstatus                       Show live BattleLuck runtime status
+.npc.near [radius] [limit]      List nearby controlled NPCs
+.npc.spawn <prefab> [count]     Spawn controlled NPCs
+.npc.follow <npcId> [target]    Make an NPC follow a target
+.npc.goto <npcId> [x y z]       Move an NPC
+.npc.despawn <npcId|all>        Despawn controlled NPCs
+.boss.spawn <prefab> [id]       Spawn a controlled boss/NPC
+.boss.list                      List controlled bosses/NPCs
+.ai.reload                      Reload AI configuration
+.ai.status                      Show detailed AI provider status
+.ai catalog search <text>       Search verified actions and data
+.ai event request <change>      Draft an event or mod edit for review
+.ai event preview <id>          Preview a proposed edit
+.ai event approve <id>          Apply an approved edit
+.roadmap.status                 Show roadmap milestones
+.roadmap.prompt <llm|developer> Show the active prompt contract
+.schematic.list                 List loaded arena schematics
+.schematic.capture <name>       Capture a nearby schematic
+```
+
+Live AI changes remain preview-first and approval-gated. Use `.ai event rollback <operationId>` when a supported operation needs to be reverted.
 
 ## Support
 

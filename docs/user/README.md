@@ -95,7 +95,16 @@ All admin commands require admin permissions and use the `.` prefix. See the com
 | `.reload` | Reload configuration |
 | `.event.start <mode>` | Start a game mode |
 | `.event.end <mode>` | End a game mode |
-| `.event.status` | Show active sessions |
+| `.event.status` | Show active events and player counts |
+| `.modelist` | List registered game modes |
+| `.bstatus` | Show live BattleLuck status |
+| `.roadmap.status` | Show roadmap milestones |
+| `.npc.near [radius] [limit]` | List nearby controlled NPCs |
+| `.npc.spawn <prefab> [count]` | Spawn controlled NPCs |
+| `.npc.follow <npcId> [target]` | Make an NPC follow a target |
+| `.npc.goto <npcId> [x y z]` | Move a controlled NPC |
+| `.npc.despawn <npcId\|all>` | Despawn controlled NPCs |
+| `.schematic.list` | List loaded schematics |
 
 ### Player Commands
 
@@ -110,8 +119,12 @@ All admin commands require admin permissions and use the `.` prefix. See the com
 | Command | Description |
 |---------|-------------|
 | `.ai.reload` | Reload AI configuration |
-| `.ai.status` | Check AI provider status |
-| `.ai.catalog search <query>` | Search action catalog |
+| `.ai.status` | Check detailed AI provider status |
+| `.aistatus` | Check AI assistant status and settings |
+| `.ai catalog search <query>` | Search verified action catalog |
+| `.ai event request <change>` | Draft an event or mod edit |
+| `.ai event preview <id>` | Preview a proposed edit |
+| `.ai event approve <id>` | Apply an approved edit |
 | `.ai chat <message>` | Chat with AI assistant |
 
 ## Discord Integration
