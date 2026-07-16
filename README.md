@@ -2,7 +2,7 @@
 
 ![BattleLuck roadmap](docs/assets/roadmap-header.png)
 
-BattleLuck is a server-side BepInEx IL2CPP plugin for V Rising dedicated servers. It provides configurable competitive and cooperative game events, managed player sessions, rollback-safe player state and loadouts, NPC and boss control, progression and death-prevention systems, teleports, zones, schematics, and an ECS-backed action pipeline. Server owners can optionally keep per-player AI chat backups on the game server for local recovery and moderation.
+BattleLuck is a server-side BepInEx IL2CPP plugin for V Rising dedicated servers. It provides configurable competitive and cooperative game events, managed player sessions, rollback-safe player state and loadouts, NPC and boss control, progression and death-prevention systems, teleports, zones, schematics, and an ECS-backed action pipeline.
 
 Event behavior is defined through configuration and validated before execution. Optional local AI tools can assist with verified action discovery, event authoring, runtime announcements, and approval-gated configuration changes. Network-based AI work runs asynchronously, while ProjectM and Unity ECS mutations are dispatched to the server main thread.
 
@@ -19,11 +19,6 @@ Event behavior is defined through configuration and validated before execution. 
 Extraction is additive: the DLL never overwrites an existing config, event, prompt,
 or tool file, so upgrades preserve server-owner changes. Provider credentials and
 `.env` files are not embedded in the DLL; configure those locally on the server.
-
-AI chat backups are server-side and opt-in. Set `chat_backup.enabled` to `true` in
-`BepInEx/config/BattleLuck/ai_config.json` to write one JSONL stream per player
-under `BepInEx/config/BattleLuck/chat-backups/`. Players do not need to install
-anything for this, and the server cannot write to their local game folders.
 
 AI is server-owned and local-first. Every installation includes the `.ai` command
 surface, but no model weights or provider credentials are bundled. A server owner

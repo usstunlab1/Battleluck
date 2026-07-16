@@ -19,23 +19,6 @@ they are intentionally not embedded in the DLL.
 
 Optional runtime files such as logs, snapshots, backups, and generated catalogs are local server state and should not be uploaded with a release package.
 
-## Per-player AI chat backup
-
-The server owner can opt in through `ai_config.json`:
-
-```json
-"chat_backup": {
-  "enabled": true,
-  "retention_days": 30,
-  "max_file_size_mb": 8
-}
-```
-
-Enabled backups are written only on the dedicated server to
-`BepInEx/config/BattleLuck/chat-backups/<steamId>/YYYY-MM-DD.jsonl`. They are
-not sent to players or installed in client game folders. Keep the directory
-private and follow the server owner's retention and consent policy.
-
 ## Safe workflow
 
 1. Stop the server or use the documented reload command.

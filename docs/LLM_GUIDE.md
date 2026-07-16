@@ -30,16 +30,6 @@ The owner can inspect the active provider with `.aistatus` and reload settings w
 `.ai.reload` (admin). A typical local setup is: start the endpoint, ensure the
 configured model is installed, then run `.ai.reload` and `.ai.status`.
 
-## Optional per-player chat backups
-
-Chat backup is controlled by the server owner, not by a client installer. Set
-`chat_backup.enabled` to `true` in `BepInEx/config/BattleLuck/ai_config.json` to
-write per-player JSONL backups under
-`BepInEx/config/BattleLuck/chat-backups/<steamId>/`. The plugin rotates files by
-day, prunes them after `retention_days`, and caps each file with
-`max_file_size_mb`. The server never writes these files to a player's local game
-folder; keep the server directory private and disclose retention to players.
-
 ## Supported Runtime
 
 Default endpoint:

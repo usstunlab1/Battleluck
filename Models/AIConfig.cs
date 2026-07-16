@@ -37,9 +37,6 @@ namespace BattleLuck.Models
         [JsonPropertyName("privacy")]
         public PrivacySettings Privacy { get; set; } = new();
 
-        [JsonPropertyName("chat_backup")]
-        public ChatBackupSettings ChatBackup { get; set; } = new();
-
         [JsonPropertyName("event_authoring")]
         public EventAuthoringSettings EventAuthoring { get; set; } = new();
 
@@ -168,19 +165,6 @@ namespace BattleLuck.Models
 
         [JsonPropertyName("max_conversation_history_size")]
         public int MaxConversationHistorySize { get; set; } = 0;
-    }
-
-    public class ChatBackupSettings
-    {
-        /// <summary>Disabled by default; the server owner must opt in to persistence.</summary>
-        [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; } = false;
-
-        [JsonPropertyName("retention_days")]
-        public int RetentionDays { get; set; } = 30;
-
-        [JsonPropertyName("max_file_size_mb")]
-        public int MaxFileSizeMb { get; set; } = 8;
     }
 
     public class EventAuthoringSettings

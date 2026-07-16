@@ -2083,7 +2083,6 @@ public static class PlayerCommands
         ctx.Reply("Admin system references: .ai action system.search/system.find, then system.register for a verified ProjectM/Unity alias");
         ctx.Reply("Admin developer tools: .ai.sequence.create/gather/preview/show/list/add/delete/execute; use wait:<seconds> and tick:<event-second> markers");
         ctx.Reply("Conversation: .ai <question> opens up to four replies; .ai end closes it; .ai history [items] shows one-day items; .ai tasks [goal] uses the planner (creation is admin-only)");
-        ctx.Reply("Chat backup: server-owner opt-in per-player JSONL files; never written to client game folders");
         ctx.Reply("Admin status: .ai.actions.review, .ai.project.list/order, .director [modeId]");
         ctx.Reply("Runtime boundary: cataloged actions and sequences run through BattleLuck validators and the server main-thread dispatcher; system.* references are verified aliases, not arbitrary native invocation.");
         
