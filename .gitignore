@@ -31,11 +31,6 @@ obj-tests/
 blobs/
 manifests/
 tools/oracleJdk-26/
-website/dist/
-website/.openai/
-website/.vinext/
-website/.wrangler/
-website/.mf/
 
 # External/generated code
 External/genai-stack/
