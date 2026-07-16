@@ -161,6 +161,26 @@ discards pending proposals; it does not reverse an action that already executed.
 | `.swapteam.ai [options]` | Balance teams and announce with AI; NPC AI coming soon (admin) |
 | `.schematic.list` | List loaded schematics |
 
+### Event creation safety and recovery
+
+`.event.create <eventId> [templateId]` creates and registers editable files without
+adding C# code or restarting the server. The next `.event.start` executes those
+files, so malformed JSON, invalid prefabs/actions, or unsafe native ECS operations
+can still crash or restart the dedicated server. Back up the server, run
+`.ai event review <eventId>`, and test in a private arena first.
+
+#### AI recovery and safety protocol
+
+While the process is alive, BattleLuck records AI operation/approval events in
+`BepInEx/config/BattleLuck/ai_operations.log`, and the AI can recommend a safer
+alternative when a request fails.
+The one-day `.ai history` and `.ai tasks` views are in-memory and are not crash
+durable. BattleLuck persists each player's pre-event snapshot in
+`BepInEx/data/BattleLuck/snapshots/<steamId>.json`; normal exit and explicit restore
+use it. A hard crash may terminate before cleanup, so inspect the logs and restore
+affected players after restart before retrying. Automatic rollback on an abrupt
+process termination is not guaranteed.
+
 Developer-only AI tools include `.ai.sequence.gather`, `.ai.sequence.create`,
 `.ai.sequence.preview`, and `.ai.sequence.execute`. Sequence steps can use
 `wait:<seconds>` and `tick:<event-second>` markers and are scheduled by the

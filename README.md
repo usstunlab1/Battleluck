@@ -253,7 +253,44 @@ Admins can create a complete editable event without adding C# code:
 .event.create shadow_hunt bloodbath
 ```
 
-This creates `config/BattleLuck/events/shadow_hunt/` with its own `flow.json`, `zones.json`, `kits.json`, and `prompt.txt`, assigns a unique zone hash, and registers the event immediately. Customize the copied zone center, kit, actions, phases, timers, and prompt, then run `.event.start shadow_hunt`.
+#### Process overview
+
+The command creates `config/BattleLuck/events/shadow_hunt/`, copies
+`flow.json`, `zones.json`, `kits.json`, and `prompt.txt`, assigns a unique zone
+hash, and registers the event with the live runtime. Customize the copied zone
+center, kits, actions, phases, timers, and prompt, then run:
+
+```text
+.event.start shadow_hunt
+```
+
+#### ⚠️ Stability and recovery warning
+
+Creating the folder is a hot file-and-registration operation. Starting an edited
+event executes its actions in the V Rising server, so invalid JSON, prefabs,
+actions, or native ECS operations may hang, crash, or restart the server. Back up
+the server, run `.ai event review shadow_hunt`, and test in a private arena before
+inviting players.
+
+#### AI recovery and safety protocol
+
+While the process is alive, BattleLuck records the AI operation/approval trail in
+`BepInEx/config/BattleLuck/ai_operations.log`; the AI can use that context to
+recommend a safer alternative. The one-day `.ai history` and `.ai tasks` views are
+in-memory and may be lost by a hard crash. Before event mutations, BattleLuck
+writes each player's pre-event state to
+`BepInEx/data/BattleLuck/snapshots/<steamId>.json`. Normal exit or an explicit
+restore uses that snapshot. A hard crash can stop cleanup before it executes, so
+after restart inspect the logs and restore affected players before retrying;
+automatic rollback during an abrupt process termination is not guaranteed.
+
+#### Safe-stage approach
+
+For a busy server, copy the template and edit the four files while the server is
+offline or in a low-load/standby window. Review the event with `.ai event review
+<eventId>`, keep a backup of `config/BattleLuck/events/`, and use the server's
+controlled reload command only after the files pass review. This keeps risky
+registration and native action execution out of peak player traffic.
 
 ## Support
 

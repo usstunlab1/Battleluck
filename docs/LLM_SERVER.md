@@ -32,4 +32,21 @@ LLM and provider I/O run asynchronously so model latency does not block the game
 5. Wait for explicit admin approval.
 6. Report the exact result or failure and use rollback where supported.
 
+## Event crash and restart boundary
+
+Custom events are declarative, but their actions still execute inside the V Rising
+server. A malformed event file or unsafe prefab/native ECS action can crash or
+restart the process. BattleLuck writes the AI operation/approval trail to
+`BepInEx/config/BattleLuck/ai_operations.log` while it is running, and the AI can
+suggest another approach when a request fails; this is diagnostics, not crash
+prevention. Interactive history
+and planner tasks are in-memory for one day and can be lost when the process dies.
+
+BattleLuck writes a player's pre-event state to
+`BepInEx/data/BattleLuck/snapshots/<steamId>.json` before event mutations. Normal
+exit and explicit restore can roll that state back, but a hard crash can interrupt
+cleanup before it executes. After a restart, inspect the log and restore affected
+players before retrying the event. Never report rollback as complete unless the
+restore operation returned success.
+
 The authoritative prompt is `config/BattleLuck/prompts/llm_server.md`; `RoadmapService` appends the current roadmap and role guardrails to the runtime system prompt.

@@ -23,8 +23,8 @@ Optional runtime files such as logs, snapshots, backups, and generated catalogs 
 
 1. Stop the server or use the documented reload command.
 2. Copy the file you are changing as a local backup.
-3. Validate JSON before restarting.
-4. Run `.validateconfig` and test the event in a private arena.
+3. Run `.ai event review <eventId>` and validate JSON before restarting.
+4. Test the event in a private arena after review.
 5. Keep risky AI actions approval-gated.
 
 Admins can register a verified system without restarting:
@@ -62,4 +62,30 @@ Admins can clone the Bloodbath lifecycle and customize it without compiling a ne
 .ai create shadow_hunt bloodbath
 ```
 
-The command creates `events/shadow_hunt/` with independent `flow.json`, `zones.json`, `kits.json`, and `prompt.txt` files, assigns a unique zone hash, and registers the event immediately. Change the copied zone center and `teleportSpawn` before using it as a separate arena. The cloned event keeps Bloodbath's entry/exit kit transaction, rollback snapshot, action validation, and elimination lifecycle until you edit those files.
+### Process overview
+
+The command creates `events/shadow_hunt/` with independent `flow.json`,
+`zones.json`, `kits.json`, and `prompt.txt` files, assigns a unique zone hash,
+and registers the event immediately. Change the copied zone center and
+`teleportSpawn` before using it as a separate arena. The cloned event keeps
+Bloodbath's entry/exit kit transaction, rollback snapshot, action validation, and
+elimination lifecycle until you edit those files.
+
+### Stability and safe-stage warning
+
+The create command is a hot file-and-registration operation; `.event.start`
+executes the edited flow. Invalid JSON, prefabs, actions, or native ECS operations
+can hang, crash, or restart the server. Back up `events/`, run `.ai event review
+<eventId>`, and test privately. On a busy server, copy and edit the template while
+the server is offline or in a low-load/standby window, then use the controlled
+reload command after review.
+
+#### AI recovery and safety protocol
+
+BattleLuck records the AI operation/approval trail in `ai_operations.log` while
+the process is alive, and AI can recommend a safer approach. `.ai history` and
+`.ai tasks` are one-day in-memory views and may be lost by a hard crash. Player
+pre-event snapshots persist under `BepInEx/data/BattleLuck/snapshots/` and are
+used by normal exit or explicit restore. A hard crash may interrupt cleanup, so
+inspect the logs and verify affected-player restoration after restart; automatic
+rollback during abrupt process termination is not guaranteed.
