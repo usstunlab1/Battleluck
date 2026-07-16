@@ -9,6 +9,7 @@ Player and unverified external chat is advice-only. It cannot authorize an actio
 Authenticated admins use these paths:
 
 ```text
+.ai create <eventId> [templateId]  # clone an editable event, default Bloodbath
 .ai action <catalog action>          # validate and preview a live action
 .ai approve [operationId]            # execute the latest or named live-action preview
 .ai event request <change>           # generate a proposed events/<mode>/flow.json
@@ -19,7 +20,24 @@ Authenticated admins use these paths:
 .aistatus                            # inspect configured providers and runtime health
 ```
 
-An `operationId` is a pending proposal. It is not evidence that a change ran. Only a successful command result confirms an execution or config reload. Rollback does not reverse a live action that already executed.
+Public `.ai <question>` and `.aistatus` are advice/status paths; they do not
+authorize mutations. Admin live operations use the process
+`catalog/search -> preview -> approve -> runtime execution`. An `operationId` is a
+pending proposal, not evidence that a change ran. Only a successful command result
+confirms an execution or config reload. Rollback does not reverse a live action
+that already executed.
+
+The action catalog is the source of truth for names, parameters, examples, risk,
+and handler availability. Any catalog category can be proposed, and verified
+ProjectM/Unity system references can be registered as `system.*` aliases after an
+exact reference search. Those aliases are safe references for BattleLuck's runtime
+state; they do not dynamically invoke arbitrary native ECS systems.
+
+Developer sequence steps can combine catalog actions with `wait:<seconds>` and
+`tick:<event-second>` markers. Use `.ai.sequence.gather` to select catalog actions,
+`.ai.sequence.preview` to validate, and `.ai.sequence.execute` only for an approved
+admin operation. The unified event runtime schedules named sequences on the session
+clock.
 
 ## Action formats
 

@@ -91,17 +91,26 @@ To enable AI:
 and reload commands are optional admin tools and are only available when the
 corresponding feature is enabled.
 
+Process: public `.ai` chat is advice-only. Admin live changes follow
+catalog/search → preview → approval → runtime execution. Rollback discards pending
+proposals; it does not reverse an action that already executed.
+
 ### Primary AI Commands
 
 | Command | Description |
 |---------|-------------|
-| `.ai <message>` | Chat with the AI assistant or request a change |
-| `.aistatus` | Check AI assistant status and settings |
-| `.ai catalog search <query>` | Search verified action catalog |
-| `.ai event request <change>` | Draft an event or mod edit |
-| `.ai event preview <id>` | Preview a proposed edit |
-| `.ai event approve <id>` | Apply an approved edit |
-| `.ai event rollback <id>` | Roll back a supported operation |
+| `.ai <message>` | Public advice/chat; no direct mutation |
+| `.aistatus` | Public provider/runtime status (read-only) |
+| `.ai catalog search <query>` | Search verified action catalog (admin) |
+| `.ai action <catalog action>` | Preview a runtime action (admin) |
+| `.ai create <eventId> [templateId]` | Clone an event; defaults to Bloodbath (admin) |
+| `.ai event request <change>` | Draft a validated event edit (admin) |
+| `.ai event review <mode>` | Review an event without writing files (admin) |
+| `.ai event preview <id>` | Preview a proposed edit (admin) |
+| `.ai event approve <id>` | Apply an approved edit (admin) |
+| `.ai approve [id]` | Execute an approved live action (admin) |
+| `.ai event rollback <id>` | Roll back a pending event proposal (admin) |
+| `.ai rollback [id]` | Discard a pending live-action proposal (admin) |
 | `.ai.reload` | Reload AI configuration (admin) |
 | `.ai.status` | Check detailed AI provider status (admin) |
 
@@ -124,6 +133,11 @@ corresponding feature is enabled.
 | `.npc.despawn <npcId\|all>` | Despawn controlled NPCs |
 | `.swapteam.ai [options]` | Balance teams and announce with AI; NPC AI coming soon (admin) |
 | `.schematic.list` | List loaded schematics |
+
+Developer-only AI tools include `.ai.sequence.gather`, `.ai.sequence.create`,
+`.ai.sequence.preview`, and `.ai.sequence.execute`. Sequence steps can use
+`wait:<seconds>` and `tick:<event-second>` markers and are scheduled by the
+server event tick after catalog validation.
 
 ### Optional Player Event Commands
 

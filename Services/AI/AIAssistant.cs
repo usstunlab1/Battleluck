@@ -462,7 +462,7 @@ namespace BattleLuck.Core
                 return "Use `.ai.sequence.gather <name> <text>` to pull matching actions from actions_catalog.json, or `.ai.sequence.create <name> <action; wait:5; tick:30; action>` for exact steps. Use `.ai.sequence.show <name>` to inspect it, and use `sequence.custom.play:sequenceId=<name>|schedule=true` from event phases, timers, or triggers.";
 
             if (lower.Contains("event") || lower.Contains("boss") || lower.Contains("wall") || lower.Contains("zone") || lower.Contains("glow") || lower.Contains("action"))
-                return $"For live event edits, use `.ai event request <what you want>`, then `.ai event preview <id>` and `.ai event approve <id>`. Catalog hints: {matches}";
+                return $"For a new event, an admin can run `.ai create <eventId> [templateId]` (Bloodbath by default). For AI edits, use `.ai event request <what you want>`, then `.ai event preview <id>` and `.ai event approve <id>`. Catalog hints: {matches}";
 
             if (lower.Contains("config") || lower.Contains("json") || lower.Contains("admin"))
                 return "Admin-safe flow: `.aistatus`, `.ai catalog search <text>`, `.ai event request <modeId?> <change>`, preview, approve, rollback if needed. Direct config writes stay approval-only.";

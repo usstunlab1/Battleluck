@@ -5,6 +5,13 @@ public static class EventTemplateCommands
 {
     [Command("event.create", description: "Create a custom event by cloning a template. Usage: .event.create <eventId> [templateId]", adminOnly: true)]
     public static void Create(ChatCommandContext ctx, string eventId, string templateId = "bloodbath")
+        => CreateFromTemplate(ctx, eventId, templateId);
+
+    /// <summary>
+    /// Shared implementation for the explicit admin command and the admin-only
+    /// `.ai create` convenience workflow.
+    /// </summary>
+    public static void CreateFromTemplate(ChatCommandContext ctx, string eventId, string templateId = "bloodbath")
     {
         var service = new EventTemplateService();
         var result = service.CreateFromTemplate(eventId, templateId);

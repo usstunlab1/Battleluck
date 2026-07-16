@@ -172,6 +172,12 @@ All action names must exist in `actions_catalog.json` under the `"registered"` a
 - Actions with `requiresApproval: true` in catalog metadata must go through preview → approve flow
 - Never bypass the approval pipeline in code
 
+The operator workflow is explicit: public `.ai` chat is advice-only; admins use
+`.ai catalog search`, preview a catalog action or event edit, approve it, and let
+the server dispatch the approved mutation on the main thread. `.ai create
+<eventId> [templateId]` is the admin convenience command for cloning an editable
+Bloodbath-style event before making preview-first AI edits.
+
 ### 3. Thread Safety for AI Operations
 - AI HTTP calls happen off the main thread
 - Results must be dispatched to main thread via `MainThreadDispatcher`
@@ -234,6 +240,15 @@ rg -n "GOOGLE_AI_API_KEY\s*[^\s#]+"
 3. Create mode-specific services if needed
 4. Add mode to `actions_catalog.json` `"runtime_inject"` section
 5. Add mode to `ai_operator_prompt.md` game modes list
+
+### Developer Sequences and Tick Markers
+
+Reusable sequences are built from catalog-backed action steps. Use
+`.ai.sequence.gather` to select actions, `.ai.sequence.create` for exact steps,
+and `.ai.sequence.preview` before execution. A sequence may include
+`wait:<seconds>` and `tick:<event-second>` markers; the event runtime schedules
+those markers on the session clock. Keep native ECS work inside registered action
+handlers so the server tick can route it through `MainThreadDispatcher`.
 
 ### Adding a New AI Provider
 1. Create a new class extending `BaseAiService`

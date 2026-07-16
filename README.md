@@ -32,21 +32,65 @@ roadmap, or integration features.
 
 ### Primary AI commands
 
+Permission labels: **public** commands are read-only/advice-oriented;
+**admin** commands create previews or perform approved runtime/config operations.
+
 ```text
-.help                          Show available BattleLuck commands
-.ai <message>                  Ask the AI assistant or request an event/mod change
-.aistatus                      Show local AI status
-.ai catalog search <text>      Search verified actions and data
-.ai event request <change>     Draft an event or mod edit for review
-.ai event preview <id>         Preview a proposed edit
-.ai event approve <id>         Apply an approved edit
-.ai event rollback <id>        Roll back a supported operation
-.ai.status                     Show detailed AI provider status (admin)
-.ai.reload                     Reload AI configuration (admin)
+.help                          Show available commands [public]
+.ai <message>                  Ask for advice; player chat cannot mutate state [public]
+.aistatus                      Show provider/runtime status [public, read-only]
+.ai catalog search <text>      Search the verified action catalog [admin]
+.ai action <catalog action>    Preview one runtime action [admin]
+.ai create <eventId> [template] Clone an event, default Bloodbath [admin]
+.ai event request <change>     Draft a validated event edit [admin]
+.ai event review <mode>        Review an event without writing files [admin]
+.ai event preview <id>         Inspect a pending proposal [admin]
+.ai event approve <id>         Apply an approved event proposal [admin]
+.ai approve [id]               Execute an approved live-action proposal [admin]
+.ai event rollback <id>        Roll back a pending event proposal [admin]
+.ai rollback [id]              Discard a pending live-action proposal [admin]
+.ai.status                     Show detailed AI provider status [admin]
+.ai.reload                     Reload AI configuration [admin]
 ```
 
-Live AI changes remain preview-first and approval-gated. Use `.help` to discover
-the full `.ai` subcommand surface for the installed configuration.
+Process: search the catalog, request a preview, inspect the operation id, approve
+it, then let the server execute approved actions through its main-thread pipeline.
+Rollback/discard only applies to pending proposals; it cannot undo an action that
+already ran. Use `.help` to discover the full `.ai` surface for the installation.
+
+### Action catalog and system reachability
+
+`config/BattleLuck/actions_catalog.json` is the action source of truth. It contains
+registered names, metadata, parameters, examples, categories, and reusable
+sequences; the runtime also adds verified aliases from the live system registry.
+Use `.ai catalog search <text>` before proposing an action. Actions may come from
+any catalog category or verified ProjectM/Unity system reference, but every action
+must have a runtime handler, pass validation, and remain approval-gated. A
+`system.*` alias records a verified system reference; it does not invoke arbitrary
+native ECS code through reflection.
+
+The current catalog includes 202 registered action names, 34 example categories,
+and built-in sequence definitions. The live catalog/search result is authoritative
+when the server is running.
+
+### Developer ticks and sequences
+
+Developers can build reusable action sequences from catalog actions. Sequence steps
+may include `wait:<seconds>` and `tick:<event-second>` markers; the unified event
+runtime schedules them on the session clock. The server tick drains queued AI and
+ECS work on the main thread, and `runtime_inject` entries are checked on the next
+event tick.
+
+```text
+.ai.sequence.gather <name> <search text>                 [admin]
+.ai.sequence.create <name> <action; wait:5; tick:30; action> [admin]
+.ai.sequence.preview <name> <steps>                      [admin]
+.ai.sequence.execute <name>                              [admin]
+```
+
+Use `.ai.sequence.show/list/add/delete` to maintain named sequences, then invoke a
+validated sequence with `sequence.custom.play:sequenceId=<id>|schedule=true` from
+an event phase, timer, trigger, or approved live action.
 
 ### Optional event and server commands
 

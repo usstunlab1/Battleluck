@@ -1056,7 +1056,7 @@ public static class PlayerCommands
         ctx.Reply($"Grid {coordinate} = world X={position.X:F1}, Y={position.Y:F1}, Z={position.Z:F1}");
     }
 
-    [Command("ai", description: "Chat with the AI assistant. Live event mutations remain admin-only.")]
+    [Command("ai", description: "Primary AI interface. Public chat is advice-only; admin changes require preview and approval.")]
     public static async Task AskAI(
         ChatCommandContext ctx,
         string query = "",
@@ -1151,6 +1151,26 @@ public static class PlayerCommands
             return true;
         }
 
+        if (trimmed.Equals("create", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("create ", StringComparison.OrdinalIgnoreCase))
+        {
+            var createText = trimmed.Length == "create".Length
+                ? ""
+                : trimmed["create ".Length..];
+            var createArgs = SplitCommandWords(createText);
+            if (createArgs.Count == 0)
+            {
+                ctx.Reply("Usage: .ai create <eventId> [templateId]. Admin only; defaults to the Bloodbath template.");
+                return true;
+            }
+
+            EventTemplateCommands.CreateFromTemplate(
+                ctx,
+                createArgs[0],
+                createArgs.Count > 1 ? createArgs[1] : "bloodbath");
+            return true;
+        }
+
         if (trimmed.StartsWith("action ", StringComparison.OrdinalIgnoreCase))
         {
             ReplyLiveActionPreview(ctx, steamId, "manual live action", new[] { trimmed["action ".Length..].Trim() });
@@ -1173,6 +1193,25 @@ public static class PlayerCommands
             if (rest.StartsWith("request ", StringComparison.OrdinalIgnoreCase))
             {
                 await ReplyEventRequest(ctx, aiAssistant, steamId, rest["request ".Length..]);
+                return true;
+            }
+            if (rest.Equals("create", StringComparison.OrdinalIgnoreCase) ||
+                rest.StartsWith("create ", StringComparison.OrdinalIgnoreCase))
+            {
+                var createText = rest.Length == "create".Length
+                    ? ""
+                    : rest["create ".Length..];
+                var createArgs = SplitCommandWords(createText);
+                if (createArgs.Count == 0)
+                {
+                    ctx.Reply("Usage: .ai event create <eventId> [templateId]. Admin only; defaults to Bloodbath.");
+                    return true;
+                }
+
+                EventTemplateCommands.CreateFromTemplate(
+                    ctx,
+                    createArgs[0],
+                    createArgs.Count > 1 ? createArgs[1] : "bloodbath");
                 return true;
             }
             if (rest.StartsWith("preview ", StringComparison.OrdinalIgnoreCase))
@@ -1906,7 +1945,7 @@ public static class PlayerCommands
     static string JoinCommandWords(params string[] words)
         => string.Join(" ", words.Where(w => !string.IsNullOrWhiteSpace(w))).Trim();
 
-    [Command("aistatus", description: "Show AI assistant status and settings")]
+    [Command("aistatus", description: "Read-only AI provider/runtime status (public)")]
     public static void AIStatus(ChatCommandContext ctx)
     {
         var aiAssistant = BattleLuckPlugin.AIAssistant;
@@ -1918,24 +1957,15 @@ public static class PlayerCommands
 
         var status = aiAssistant.IsEnabled ? "Enabled" : "Disabled";
         ctx.Reply($"🤖 AI Assistant Status: {status}");
-        ctx.Reply("Available commands:");
-        ctx.Reply("  ai <question> — Ask the AI assistant");
-        ctx.Reply("  ai event request <modeId?> <request> — Preview event JSON changes");
-        ctx.Reply("  ai event review <modeId?> [focus] — AI audit without writing files");
-        ctx.Reply("  ai approve / ai yes — Approve your latest pending AI operation");
-        ctx.Reply("  ai rollback / ai cancel — Discard your latest pending AI operation");
-        ctx.Reply("  ai event preview/approve/rollback <operationId> — Optional explicit id form");
-        ctx.Reply("  ai action <catalog action> — Preview a live action, then approve to execute now");
-        ctx.Reply("  ai catalog search <text> — Search actions_catalog.json");
-        ctx.Reply("  ai.actions.review [focus] — LLM review of legacy/canonical actions");
-        ctx.Reply("  director [modeId] — Game session director status and recommendations");
-        ctx.Reply("  aistatus — Show this status");
-        ctx.Reply("  ai.project.list — List available projects");
-        ctx.Reply("  ai.project.order <projectId> <action> — Order project action");
-        ctx.Reply("  ai.sequence.create <name> <steps> — Create custom action/timing sequence");
-        ctx.Reply("  ai.sequence.gather <name> <text> — Build sequence from action catalog matches");
-        ctx.Reply("  ai.sequence.preview/add/show/list/delete/execute — Manage custom sequences");
-        ctx.Reply("  sequence.create/gather/run/show/list — Shortcuts for custom sequences");
+        ctx.Reply("Process: players may ask .ai for advice; only admins can create previews or approve live changes.");
+        ctx.Reply("Live change flow: catalog/search → preview → admin approval → main-thread execution → rollback/discard if still pending.");
+        ctx.Reply("Public/read-only: .ai <question>, .aistatus");
+        ctx.Reply("Admin event flow: .ai create <eventId> [templateId] (clone), .ai event request/review, .ai event preview, .ai approve, .ai rollback");
+        ctx.Reply("Admin runtime actions: .ai catalog search <text>, .ai action <catalog action>, then .ai approve to execute");
+        ctx.Reply("Admin system references: .ai action system.search/system.find, then system.register for a verified ProjectM/Unity alias");
+        ctx.Reply("Admin developer tools: .ai.sequence.create/gather/preview/show/list/add/delete/execute; use wait:<seconds> and tick:<event-second> markers");
+        ctx.Reply("Admin status: .ai.actions.review, .ai.project.list/order, .director [modeId]");
+        ctx.Reply("Runtime boundary: cataloged actions and sequences run through BattleLuck validators and the server main-thread dispatcher; system.* references are verified aliases, not arbitrary native invocation.");
         
         if (aiAssistant.IsEnabled)
         {

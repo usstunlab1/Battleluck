@@ -73,6 +73,29 @@ also enqueue their game-facing notifications. Any ProjectM or Unity ECS mutation
 approval-gated and queued through the main-thread dispatcher before it touches the
 live world.
 
+### Action catalog, systems, ticks, and sequences
+
+`config/BattleLuck/actions_catalog.json` is the canonical action manifest. It
+defines registered action names, metadata, required/optional parameters, examples,
+risk, handler availability, and reusable sequences. The runtime merges verified
+`system.*` aliases from `live_system_registry.json`; those aliases are references
+validated against the KindredExtract ProjectM/Unity inventory and are not arbitrary
+native ECS reflection calls. Every action proposed by AI or loaded from an event
+must be cataloged (or a verified live alias), handler-reachable, and accepted by
+the validation pipeline.
+
+The server tick is the execution boundary. `ServerTickHook` calls
+`BattleLuckPlugin.ServerTick`, which ticks sessions and services, drains
+`MainThreadDispatcher`, and processes queued AI, Discord, and webhook work. Event
+runtime injection is hot-read for the next event tick; network/model work remains
+off-thread until an approved mutation is dispatched.
+
+Developers can compose reusable sequences from catalog actions with
+`.ai.sequence.gather` or `.ai.sequence.create`. A sequence may contain action steps,
+`wait:<seconds>`, and `tick:<event-second>` markers. Preview and validate it with
+`.ai.sequence.preview`, then execute it from a phase, timer, trigger, or approved
+live operation using `sequence.custom.play:sequenceId=<id>|schedule=true`.
+
 ## Project Folders
 
 | Folder | Purpose |

@@ -89,10 +89,12 @@ The LLM should follow this loop:
 
 1. **Observe** — read `.director`, active sessions, event runtime, action catalog, bosses, objects, players, timers, and cleanup state.
 2. **Diagnose** — name the risk or missing piece in one short sentence.
-3. **Plan** — choose existing catalog actions or a unified event JSON edit.
-4. **Preview** — use `.ai event request <change>` or `.ai action <catalog action>`.
-5. **Approve** — wait for `.ai approve`, `.ai event approve <operationId>`, or another explicit admin command.
-6. **Rollback** — use `.ai rollback` / `.ai event rollback <operationId>` when the result is bad.
+3. **Plan** — choose existing catalog actions, a verified system alias, a reusable sequence, or a unified event JSON edit.
+4. **Create (optional)** — an admin may run `.ai create <eventId> [templateId]` to clone Bloodbath or another event template.
+5. **Preview** — use `.ai event request <change>` or `.ai action <catalog action>`.
+6. **Approve** — wait for `.ai approve`, `.ai event approve <operationId>`, or another explicit admin command.
+7. **Execute** — the server validates the approved operation and dispatches native-world work on its main thread.
+8. **Rollback** — use `.ai rollback` / `.ai event rollback <operationId>` for pending proposals; rollback cannot undo an action that already ran.
 
 ### Good Admin Prompt
 
@@ -114,10 +116,16 @@ It must not write config directly from normal chat. The safe flow is:
 
 ```
 .ai event request <change>
+.ai create <eventId> [templateId]     # admin: clone an editable event template
 .ai event preview <operationId>
 .ai event approve <operationId>
 .ai event rollback <operationId>
 ```
+
+Actions are selected from the verified catalog and may target any catalog category.
+ProjectM/Unity system actions must first be found and registered as exact verified
+`system.*` references; they are not arbitrary native calls. Developer sequences can
+combine catalog actions with `wait:<seconds>` and `tick:<event-second>` markers.
 
 The following actions are controlled or destructive and need admin approval:
 

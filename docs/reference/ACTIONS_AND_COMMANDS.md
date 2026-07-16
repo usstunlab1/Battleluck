@@ -479,6 +479,19 @@ Total: 261
 team swap and asks the AI assistant to announce it. NPC-directed team control is
 planned and marked **Coming soon**.
 
+AI command process and permissions:
+
+- Public `.ai <question>` is advice-only; public `.aistatus` is read-only.
+- Admin `.ai action`, `.ai event request`, `.ai event review`, and `.ai catalog search`
+  create or inspect runtime proposals; `.ai approve` is required before execution.
+- Admin `.ai create <eventId> [templateId]` clones an editable event template
+  (Bloodbath by default) and registers it without a restart.
+- Admin `.ai.sequence.*` commands build, validate, and execute catalog-backed
+  sequences. `wait:<seconds>` and `tick:<event-second>` are developer timing
+  markers scheduled by the event runtime.
+- Other commands are runtime/admin tools; `.help` remains the live permission-aware
+  command list.
+
 ## Roadmap administration commands
 
 - `.roadmap.status` — list the server roadmap and milestone states.

@@ -28,6 +28,24 @@ Admins can register a verified system without restarting:
 
 Registrations are saved in `live_system_registry.json`. They are verified references for BattleLuck and AI tooling; they do not instantiate, patch, or invoke arbitrary native ECS systems.
 
+## AI command process and permissions
+
+- Public `.ai <question>` is advice-only and `.aistatus` is read-only.
+- Admin `.ai catalog search` finds validated actions; `.ai action` creates a
+  preview; `.ai approve` executes an approved operation through the server main
+  thread; `.ai rollback` discards a pending proposal.
+- Admin `.ai create <eventId> [templateId]` clones an editable event (Bloodbath is
+  the default template) and registers it without a restart. Use `.ai event request`
+  for preview-first AI edits after cloning.
+- The action catalog covers every handler-reachable category. Verified ProjectM or
+  Unity systems can be represented as `system.*` aliases after exact lookup and
+  registration; aliases are references, not arbitrary native invocation.
+- Developer sequences are catalog-backed and can include `wait:<seconds>` and
+  `tick:<event-second>` markers. The event tick schedules them and the main-thread
+  dispatcher performs approved ECS mutations.
+
+The current command list is always available in game with `.help`.
+
 See the [user guide](../../docs/user/README.md) and [developer guide](../../docs/developer/README.md) for command and schema details.
 
 ## Create a custom event
@@ -36,6 +54,7 @@ Admins can clone the Bloodbath lifecycle and customize it without compiling a ne
 
 ```text
 .event.create shadow_hunt bloodbath
+.ai create shadow_hunt bloodbath
 ```
 
 The command creates `events/shadow_hunt/` with independent `flow.json`, `zones.json`, `kits.json`, and `prompt.txt` files, assigns a unique zone hash, and registers the event immediately. Change the copied zone center and `teleportSpawn` before using it as a separate arena. The cloned event keeps Bloodbath's entry/exit kit transaction, rollback snapshot, action validation, and elimination lifecycle until you edit those files.
