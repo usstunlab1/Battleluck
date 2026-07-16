@@ -18,6 +18,7 @@ public static class PlayerCommands
 {
     static readonly LiveEventOperatorService LiveOperator = new();
     static readonly CustomSequenceService CustomSequences = new();
+    static readonly AiTaskService AiTasks = AiTaskService.Instance;
     static readonly string[] TeamColorBuffs =
     {
         "VBlood_Aura_Champion_Red",
@@ -1018,6 +1019,9 @@ public static class PlayerCommands
         ctx.Reply("  exit — Force exit (admin bypass)");
         ctx.Reply("  score — View scoreboard");
         ctx.Reply("  elo — View Elo leaderboard");
+        ctx.Reply("  ai <question> — AI chat; up to four replies, .ai end closes the session");
+        ctx.Reply("  ai tasks [goal] — View tasks or (admin) create a catalog-backed plan");
+        ctx.Reply("  ai history [items] — View your in-memory AI history from the last 24 hours");
         ctx.Reply("Admin commands (admin only):");
         ctx.Reply("  modelist — List modes");
         ctx.Reply("  modeinfo <id> — Mode details");
@@ -1080,6 +1084,11 @@ public static class PlayerCommands
     {
         query = JoinCommandWords(query, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18);
         var aiAssistant = BattleLuckPlugin.AIAssistant;
+        var steamId = ctx.GetSenderCharacterEntity().GetSteamId();
+
+        if (await TryHandleAiUtilityCommand(ctx, steamId, query))
+            return;
+
         if (aiAssistant == null)
         {
             ctx.Reply("AI Assistant is not initialized. Check ai_config.json, then run -ai.reload.");
@@ -1092,15 +1101,18 @@ public static class PlayerCommands
             return;
         }
 
-        var steamId = ctx.GetSenderCharacterEntity().GetSteamId();
-
         if (IsAdminSender(ctx) && await TryHandleLiveOperatorCommand(ctx, aiAssistant, steamId, query))
             return;
 
         // Fall back to existing chat behavior
         try
         {
+            // A normal .ai question opens a bounded four-reply conversation. The
+            // player can stop it early with .ai end.
+            GameChatAiBridge.BeginSession(steamId);
             var response = await aiAssistant.HandleDirectQuery(steamId, query, source: IsAdminSender(ctx) ? "admin_command" : "player_command");
+            if (!string.IsNullOrWhiteSpace(response))
+                GameChatAiBridge.RecordReply(steamId);
             
             // Check if response is JSON action
             var actionString = FlowActionExecutor.ParseJsonToActionString(response ?? "");
@@ -1119,6 +1131,112 @@ public static class PlayerCommands
             BattleLuckPlugin.LogWarning($"AI command error: {ex.Message}");
             ctx.Reply("Sorry, I encountered an error processing your request.");
         }
+    }
+
+    static async Task<bool> TryHandleAiUtilityCommand(ChatCommandContext ctx, ulong steamId, string query)
+    {
+        var words = SplitCommandWords(query);
+        if (words.Count == 0)
+            return false;
+
+        if (words[0].Equals("end", StringComparison.OrdinalIgnoreCase) && words.Count == 1)
+        {
+            var ended = GameChatAiBridge.EndSession(steamId);
+            ctx.Reply(ended
+                ? "🤖 AI conversation ended. Future normal chat will not be sent to AI."
+                : "🤖 No active AI conversation was found.");
+            return true;
+        }
+
+        if (words[0].Equals("history", StringComparison.OrdinalIgnoreCase))
+        {
+            var includeAll = words.Skip(1).Any(word => word.Equals("all", StringComparison.OrdinalIgnoreCase));
+            var count = words.Skip(1)
+                .Select(word => int.TryParse(word, out var parsed) ? parsed : 20)
+                .FirstOrDefault(value => value != 20);
+            if (count <= 0)
+                count = 20;
+
+            ReplyAiHistory(ctx, steamId, count, includeAll && IsAdminSender(ctx));
+            return true;
+        }
+
+        if (!words[0].Equals("tasks", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var goal = string.Join(" ", words.Skip(1));
+        if (string.IsNullOrWhiteSpace(goal))
+        {
+            ReplyAiTasks(ctx, steamId, includeAll: IsAdminSender(ctx));
+            return true;
+        }
+
+        if (!IsAdminSender(ctx))
+        {
+            ctx.Reply("🚫 Creating AI planning tasks requires admin privileges. Use .ai tasks to view your recent tasks.");
+            return true;
+        }
+
+        await CreateAiTask(ctx, steamId, goal);
+        return true;
+    }
+
+    static void ReplyAiHistory(ChatCommandContext ctx, ulong steamId, int count, bool includeAll)
+    {
+        var turns = ConversationStore.Instance.RecentWithin(
+            ConversationStore.HistoryRetention,
+            Math.Clamp(count, 1, 50),
+            includeAll ? null : steamId);
+
+        ctx.Reply($"🕘 AI history (last 24 hours, {turns.Count} item(s)){(includeAll ? "; all players" : "; you only")}:" );
+        if (turns.Count == 0)
+        {
+            ctx.Reply("No AI conversation items are available in the one-day in-memory window.");
+            return;
+        }
+
+        foreach (var turn in turns)
+            ctx.Reply($"[{turn.Timestamp.ToLocalTime():MM-dd HH:mm}] {turn.Speaker}: {TrimReply(turn.Text, 240)}");
+    }
+
+    static void ReplyAiTasks(ChatCommandContext ctx, ulong steamId, bool includeAll)
+    {
+        var tasks = AiTasks.List(steamId, includeAll, 20);
+        ctx.Reply($"🧭 AI tasks (last 24 hours, {tasks.Count} item(s)){(includeAll ? "; all admins" : "; you only")}:" );
+        if (tasks.Count == 0)
+        {
+            ctx.Reply("No planning tasks yet. Admins can create one with .ai tasks <goal>.");
+            return;
+        }
+
+        foreach (var task in tasks)
+        {
+            ctx.Reply($"- {task.TaskId} [{task.Status}] {TrimReply(task.Goal, 180)} ({task.Steps.Count} step(s))");
+            foreach (var step in task.Steps.Take(3))
+                ctx.Reply($"  {step.Confidence:P0} {TrimReply(step.Action, 180)} — {TrimReply(step.Reason, 140)}");
+        }
+    }
+
+    static async Task CreateAiTask(ChatCommandContext ctx, ulong steamId, string goal)
+    {
+        ctx.Reply("🧭 Planning AI task from the verified action catalog; no action has been executed.");
+        var result = await AiTasks.CreatePlanAsync(steamId, goal).ConfigureAwait(false);
+        if (!result.Success || result.Value == null)
+        {
+            ctx.Reply($"AI task failed: {result.Error}");
+            return;
+        }
+
+        var task = result.Value;
+        ctx.Reply($"Task {task.TaskId} [{task.Status}] created. Preview/approval is still required before execution.");
+        if (task.Steps.Count == 0)
+        {
+            ctx.Reply("No structured steps were returned. Check the provider with .aistatus and try again.");
+            return;
+        }
+
+        foreach (var step in task.Steps.Take(10))
+            ctx.Reply($"{step.Confidence:P0} {TrimReply(step.Action, 220)} — {TrimReply(step.Reason, 160)}");
     }
 
     static async Task<bool> TryHandleLiveOperatorCommand(ChatCommandContext ctx, AIAssistant aiAssistant, ulong steamId, string query)
@@ -1964,6 +2082,7 @@ public static class PlayerCommands
         ctx.Reply("Admin runtime actions: .ai catalog search <text>, .ai action <catalog action>, then .ai approve to execute");
         ctx.Reply("Admin system references: .ai action system.search/system.find, then system.register for a verified ProjectM/Unity alias");
         ctx.Reply("Admin developer tools: .ai.sequence.create/gather/preview/show/list/add/delete/execute; use wait:<seconds> and tick:<event-second> markers");
+        ctx.Reply("Conversation: .ai <question> opens up to four replies; .ai end closes it; .ai history [items] shows one-day items; .ai tasks [goal] uses the planner (creation is admin-only)");
         ctx.Reply("Admin status: .ai.actions.review, .ai.project.list/order, .director [modeId]");
         ctx.Reply("Runtime boundary: cataloged actions and sequences run through BattleLuck validators and the server main-thread dispatcher; system.* references are verified aliases, not arbitrary native invocation.");
         

@@ -90,6 +90,12 @@ The server tick is the execution boundary. `ServerTickHook` calls
 runtime injection is hot-read for the next event tick; network/model work remains
 off-thread until an approved mutation is dispatched.
 
+`Patches/AiTickSequencePatches.cs` adds read-only telemetry hooks for the ProjectM
+gameplay tick and `ProjectM.Sequencer.SequencerUpdateGroup`. These hooks raise
+typed router events only; they do not execute native ECS work. `.ai tasks <goal>`
+uses `AiActionPlanner` to create a catalog-validated proposal, while `.ai history`
+shows transient conversation items retained for one day.
+
 Developers can compose reusable sequences from catalog actions with
 `.ai.sequence.gather` or `.ai.sequence.create`. A sequence may contain action steps,
 `wait:<seconds>`, and `tick:<event-second>` markers. Preview and validate it with

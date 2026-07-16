@@ -44,6 +44,8 @@ internal static class ServerTickHook
             // Clamp to avoid huge deltas on first tick or lag spikes
             if (delta > 2f) delta = 0.016f;
 
+            ProjectMEventRouter.Instance?.RaiseBattleLuckServerTick(
+                new BattleLuckServerTickEvent(delta, now));
             BattleLuckPlugin.ServerTick(delta);
         }
         catch (Exception ex)

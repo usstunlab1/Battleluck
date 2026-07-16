@@ -90,6 +90,8 @@ _instance.OnSequencer = null;
 _instance.OnDoorState = null;
 _instance.OnCastleFloorWalls = null;
 _instance.OnAiGroupProjectMTick = null;
+_instance.OnBattleLuckServerTick = null;
+_instance.OnProjectMRuntimeTick = null;
 _instance.IsInitialized = false;
 _instance = null;
 }
@@ -137,6 +139,10 @@ public event Action<CastleFloorWallsEvent>? OnCastleFloorWalls;
 #region Group 7 — ProjectM AI
 public event Action<AiGroupProjectMTickEvent>? OnAiGroupProjectMTick;
 #endregion
+#region Group 8 — Runtime tick and sequence hooks
+public event Action<BattleLuckServerTickEvent>? OnBattleLuckServerTick;
+public event Action<ProjectMRuntimeTickEvent>? OnProjectMRuntimeTick;
+#endregion
 // ── Raise helpers ─────────────────────────────────────────────────────
 // Called by Patches/ProjectMEventRouterPatches.cs. We never log from these
 // paths — a throwing subscriber must not break the patch chain. The patch
@@ -170,6 +176,8 @@ internal void RaiseSequencer(SequencerEvent e) => SafeInvoke(OnSequencer, e);
 internal void RaiseDoorState(DoorStateEvent e) => SafeInvoke(OnDoorState, e);
 internal void RaiseCastleFloorWalls(CastleFloorWallsEvent e) => SafeInvoke(OnCastleFloorWalls, e);
 internal void RaiseAiGroupProjectMTick(AiGroupProjectMTickEvent e) => SafeInvoke(OnAiGroupProjectMTick, e);
+internal void RaiseBattleLuckServerTick(BattleLuckServerTickEvent e) => SafeInvoke(OnBattleLuckServerTick, e);
+internal void RaiseProjectMRuntimeTick(ProjectMRuntimeTickEvent e) => SafeInvoke(OnProjectMRuntimeTick, e);
 static void SafeInvoke<T>(Action<T>? handler, T arg)
 {
 if (handler == null) return;

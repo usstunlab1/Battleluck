@@ -178,7 +178,8 @@ public class BattleLuckPlugin : BasePlugin
                 typeof(PlaceTileModelSystemPatch),
                 typeof(UnitSpawnerPatch),
                 typeof(BattleLuckInventoryEquipmentPatches),
-                typeof(ProjectMEventRouterPatches)
+                typeof(ProjectMEventRouterPatches),
+                typeof(BattleLuck.Patches.AiTickSequencePatches)
             };
 
             foreach (var patchType in criticalPatches)
@@ -334,6 +335,16 @@ public class BattleLuckPlugin : BasePlugin
             catch (Exception ex)
             {
                 Log?.LogWarning($"[BattleLuck] Tick error in AIAssistant.CleanupOldContexts: {ex.Message}");
+            }
+
+            try
+            {
+                AiTaskService.Instance.Tick();
+                ConversationStore.Instance.Prune();
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning($"[BattleLuck] Tick error in AI task/history cleanup: {ex.Message}");
             }
 
             try

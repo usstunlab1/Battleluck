@@ -89,3 +89,10 @@ public readonly record struct CastleFloorWallsEvent(Entity CastleHeart, int Tile
 /// <summary>Fired from ProjectM AI update systems so BattleLuck can sample NPC/aggro state.</summary>
 public readonly record struct AiGroupProjectMTickEvent(string SourceSystem, DateTime TimestampUtc);
 #endregion
+
+#region Group 8 - Runtime tick and sequence hooks
+/// <summary>Fired by the canonical BattleLuck server tick boundary.</summary>
+public readonly record struct BattleLuckServerTickEvent(float DeltaSeconds, DateTime TimestampUtc);
+/// <summary>Fired after ProjectM's gameplay tick system updates.</summary>
+public readonly record struct ProjectMRuntimeTickEvent(string SourceSystem, DateTime TimestampUtc);
+#endregion

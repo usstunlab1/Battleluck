@@ -17,6 +17,12 @@ plugin, model, or API client. Every installation exposes `.ai` and `.aistatus`.
   command/catalog guidance; it does not pretend that a full model is available.
 - Player `.ai` chat is advice-only. Admin previews and approvals are required for
   live actions, event edits, NPC/boss control, and config writes.
+- A normal `.ai <message>` opens a bounded interactive conversation with up to
+  four AI replies. `.ai end` closes it early; ordinary chat is never forwarded
+  while no session is active.
+- `.ai history [items]` exposes transient in-memory items from the last 24 hours;
+  `.ai tasks <goal>` runs the catalog-backed planner and stores a reviewable task,
+  but never executes the proposed actions.
 - Network calls run asynchronously. Approved ProjectM/Unity mutations are queued
   to the server main thread. Conversation history is disabled by default.
 

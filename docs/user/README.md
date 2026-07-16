@@ -108,15 +108,22 @@ surface completely, set `"enabled": false` and reload the server configuration.
 and reload commands are optional admin tools and are only available when the
 corresponding feature is enabled.
 
-Process: public `.ai` chat is advice-only. Admin live changes follow
-catalog/search → preview → approval → runtime execution. Rollback discards pending
-proposals; it does not reverse an action that already executed.
+Process: public `.ai` chat is advice-only and allows up to four AI replies per
+interactive conversation; use `.ai end` to stop it early. Admin live changes
+follow catalog/search → preview → approval → runtime execution. `.ai history`
+shows only transient items from the last 24 hours. `.ai tasks <goal>` uses the
+catalog-backed planner and stores a proposal without executing it. Rollback
+discards pending proposals; it does not reverse an action that already executed.
 
 ### Primary AI Commands
 
 | Command | Description |
 |---------|-------------|
 | `.ai <message>` | Public advice/chat; no direct mutation |
+| `.ai end` | End the current four-reply AI conversation |
+| `.ai history [items]` | Show transient AI history from the last 24 hours |
+| `.ai tasks` | List recent planner tasks |
+| `.ai tasks <goal>` | Create a catalog-backed planner task (admin; preview only) |
 | `.aistatus` | Public provider/runtime status (read-only) |
 | `.ai catalog search <query>` | Search verified action catalog (admin) |
 | `.ai action <catalog action>` | Preview a runtime action (admin) |

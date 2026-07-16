@@ -329,6 +329,7 @@ namespace BattleLuck.Core
                     context.AddMessage(ChatMessage.User(query));
                     context.AddMessage(ChatMessage.Assistant(localResponse));
                     _lastMessageTimes[steamId] = DateTime.UtcNow;
+                    AppendInteractiveConversation(steamId, query, localResponse, source);
                     PublishAssistantOutput(steamId, query, localResponse, source, broadcastToInGameChat, position);
                 }
                 catch { }
@@ -369,6 +370,8 @@ namespace BattleLuck.Core
                     context.AddMessage(ChatMessage.Assistant(response));
                     _lastMessageTimes[steamId] = DateTime.UtcNow;
 
+                    AppendInteractiveConversation(steamId, query, response, source);
+
                     PublishAssistantOutput(steamId, query, response, source, broadcastToInGameChat, position);
 
                     // Forward to external bridges (fire-and-forget)
@@ -383,6 +386,51 @@ namespace BattleLuck.Core
                 BattleLuckLogger.Warning($"AI query error for player {steamId}: {ex.Message}");
                 return "Sorry, I encountered an error processing your request.";
             }
+        }
+
+        /// <summary>
+        /// Give an active .ai conversation a four-message in-memory context
+        /// window. This is separate from the optional long-term privacy history.
+        /// </summary>
+        public void SetInteractiveConversation(ulong steamId, bool active)
+        {
+            if (steamId == 0)
+                return;
+
+            var context = GetOrCreatePlayerContext(steamId);
+            context.SetConversationWindow(active ? ConversationStore.InteractiveReplyLimit : _maxConversationHistory);
+            if (!active && _maxConversationHistory <= 0)
+                context.ClearConversation();
+        }
+
+        void AppendInteractiveConversation(ulong steamId, string query, string response, string source)
+        {
+            if (steamId == 0 || string.IsNullOrWhiteSpace(query) || string.IsNullOrWhiteSpace(response))
+                return;
+
+            // GameChatAiBridge already records game-chat turns. Planner and
+            // contextual system calls are not player history either.
+            if (source.Equals("game_chat", StringComparison.OrdinalIgnoreCase) ||
+                source.Equals("planner", StringComparison.OrdinalIgnoreCase) ||
+                source.Equals("system-reference", StringComparison.OrdinalIgnoreCase) ||
+                source.Equals("event-system-reference", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var speaker = IsAdminOperatorSource(source)
+                ? ConversationSpeaker.Admin
+                : ConversationSpeaker.Player;
+            ConversationStore.Instance.Append(new ConversationTurn
+            {
+                Speaker = speaker,
+                SteamId = steamId,
+                Text = query
+            });
+            ConversationStore.Instance.Append(new ConversationTurn
+            {
+                Speaker = ConversationSpeaker.Ai,
+                SteamId = steamId,
+                Text = response
+            });
         }
 
         public string FormatInGameResponse(string? query, string? response)
@@ -1785,7 +1833,7 @@ Do not propose strict-profile native construction, progression, or arbitrary Pro
         
         private readonly Dictionary<string, DateTime> _lastTipTimes = new();
         private readonly TimeSpan _tipCooldown;
-        private readonly int _maxConversationHistory;
+        private int _maxConversationHistory;
 
         public PlayerContext(ulong steamId, TimeSpan tipCooldown, int maxConversationHistory)
         {
@@ -1836,6 +1884,21 @@ Do not propose strict-profile native construction, progression, or arbitrary Pro
                 ConversationHistory.RemoveAt(0);
             }
         }
+
+        public void SetConversationWindow(int maxMessages)
+        {
+            _maxConversationHistory = Math.Max(0, maxMessages);
+            if (_maxConversationHistory <= 0)
+            {
+                ConversationHistory.Clear();
+                return;
+            }
+
+            while (ConversationHistory.Count > _maxConversationHistory)
+                ConversationHistory.RemoveAt(0);
+        }
+
+        public void ClearConversation() => ConversationHistory.Clear();
 
         public List<ChatMessage> GetRecentMessages(int count)
         {

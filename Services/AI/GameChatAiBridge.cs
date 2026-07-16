@@ -15,6 +15,45 @@ public static class GameChatAiBridge
         _genaiClient = genaiClient;
     }
 
+    /// <summary>Start the bounded four-reply .ai conversation for a player.</summary>
+    public static void BeginSession(ulong steamId)
+    {
+        ConversationStore.Instance.BeginInteractiveSession(steamId);
+        BattleLuckPlugin.AIAssistant?.SetInteractiveConversation(steamId, active: true);
+    }
+
+    /// <summary>Stop an interactive conversation and clear its provider context.</summary>
+    public static bool EndSession(ulong steamId)
+    {
+        var ended = ConversationStore.Instance.EndInteractiveSession(steamId);
+        BattleLuckPlugin.AIAssistant?.SetInteractiveConversation(steamId, active: false);
+        return ended;
+    }
+
+    public static bool HasSession(ulong steamId) =>
+        ConversationStore.Instance.HasInteractiveSession(steamId);
+
+    /// <summary>Record one assistant reply and notify the player when the budget closes.</summary>
+    public static void RecordReply(ulong steamId)
+    {
+        if (!ConversationStore.Instance.TryConsumeInteractiveReply(steamId, out var remaining, out var closed))
+            return;
+
+        if (closed)
+        {
+            BattleLuckPlugin.AIAssistant?.SetInteractiveConversation(steamId, active: false);
+            BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(
+                steamId,
+                "[AI] Four replies completed. Say .ai <question> to start another chat, or .ai end to close it earlier.");
+        }
+        else
+        {
+            BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(
+                steamId,
+                $"[AI] Conversation active — {remaining} repl{(remaining == 1 ? "y" : "ies")} remaining. Say .ai end to stop now.");
+        }
+    }
+
     public static void HandleChatEvent(Entity eventEntity, ChatMessageEvent chatEvent)
     {
         try
@@ -23,16 +62,22 @@ public static class GameChatAiBridge
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            var channel = ExtractChannel(chatEvent);
-            if (!TryExtractAiQuery(message, channel, out var query))
-                return;
-
             var steamId = ResolveSteamId(eventEntity, chatEvent);
             if (steamId == 0)
                 return;
 
+            var channel = ExtractChannel(chatEvent);
+            if (!TryExtractAiQuery(message, channel, steamId, out var query))
+                return;
+
             if (!TryMarkRecent(steamId, query))
                 return;
+
+            // A direct AI-channel query starts the same bounded conversation as
+            // the .ai command. Plain messages are accepted only while that session
+            // is active; ordinary game chat is otherwise untouched.
+            if (!HasSession(steamId))
+                BeginSession(steamId);
 
             // Record the human message in the shared conversation log so the AI
             // (and everyone else) can read the same chat history.
@@ -83,7 +128,10 @@ public static class GameChatAiBridge
                 {
                     var reply = await ai.HandleDirectQuery(steamId, query, source: "game_chat", broadcastToInGameChat: true).ConfigureAwait(false);
                     if (!string.IsNullOrEmpty(reply))
+                    {
                         AppendAiTurn(steamId, reply, actionResult: null);
+                        RecordReply(steamId);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -97,11 +145,16 @@ public static class GameChatAiBridge
         }
     }
 
-    static bool TryExtractAiQuery(string message, string channel, out string query)
+    static bool TryExtractAiQuery(string message, string channel, ulong steamId, out string query)
     {
         query = string.Empty;
         var trimmed = message.Trim();
         if (trimmed.Length == 0)
+            return false;
+
+        // VCF normally consumes this command first. Keep a defensive fallback
+        // so an alternate chat channel can never send the stop command to the LLM.
+        if (trimmed.Equals(".ai end", StringComparison.OrdinalIgnoreCase))
             return false;
 
         if (string.Equals(channel, "ai", StringComparison.OrdinalIgnoreCase))
@@ -117,6 +170,15 @@ public static class GameChatAiBridge
                 continue;
 
             query = trimmed[prefix.Length..].TrimStart(':', ' ', '\t');
+            return query.Length > 0;
+        }
+
+        // Once a player starts .ai, the next four normal chat messages are
+        // conversational follow-ups. This intentionally does not activate for
+        // players who have not opted into a session.
+        if (HasSession(steamId) && !trimmed.StartsWith(".", StringComparison.Ordinal))
+        {
+            query = trimmed;
             return query.Length > 0;
         }
 
@@ -184,12 +246,14 @@ public static class GameChatAiBridge
 
             var reply = sb.ToString();
             if (reply.Length > 0)
+            {
                 BroadcastAIReply(steamId, reply);
+                AppendAiTurn(steamId, reply, actionResult: null);
+                RecordReply(steamId);
+            }
 
             // Player chat is advice-only. Authenticated admins use the explicit
             // preview/approve command path for every live action.
-            if (!string.IsNullOrWhiteSpace(reply))
-                AppendAiTurn(steamId, reply, actionResult: null);
         }
         catch (Exception ex)
         {

@@ -78,6 +78,10 @@ Permission labels: **public** commands are read-only/advice-oriented;
 ```text
 .help                          Show available commands [public]
 .ai <message>                  Ask for advice; player chat cannot mutate state [public]
+.ai end                       End the four-reply AI conversation [public]
+.ai history [items]            Show your in-memory AI history from the last 24 hours [public]
+.ai tasks                      List your recent AI planning tasks [public]
+.ai tasks <goal>               Create a catalog-backed plan (preview only) [admin]
 .aistatus                      Show provider/runtime status [public, read-only]
 .ai catalog search <text>      Search the verified action catalog [admin]
 .ai action <catalog action>    Preview one runtime action [admin]
@@ -95,8 +99,12 @@ Permission labels: **public** commands are read-only/advice-oriented;
 
 Process: search the catalog, request a preview, inspect the operation id, approve
 it, then let the server execute approved actions through its main-thread pipeline.
-Rollback/discard only applies to pending proposals; it cannot undo an action that
-already ran. Use `.help` to discover the full `.ai` surface for the installation.
+An interactive `.ai <message>` conversation allows up to four AI replies; use
+`.ai end` to close it early. `.ai history [items]` shows transient conversation
+items from the last 24 hours, while `.ai tasks <goal>` stores a planner proposal
+for admin review without executing it. Rollback/discard only applies to pending
+proposals; it cannot undo an action that already ran. Use `.help` to discover the
+full `.ai` surface for the installation.
 
 ### Action catalog and system reachability
 
