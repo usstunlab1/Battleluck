@@ -1113,6 +1113,7 @@ public static class AdminCommands
             ctx.Reply($"Provider status: {aiAssistant.ProviderStatus}");
             ctx.Reply($"Auto Tips: {(config.Messaging.AutoTipsEnabled ? "ON" : "OFF")}");
             ctx.Reply($"Message Cooldown: {config.Messaging.MessageCooldownSeconds}s");
+            ctx.Reply($"Per-player chat backup: {(BattleLuckPlugin.IsConversationBackupEnabled ? "ON" : "OFF")} (server path: {BattleLuckPlugin.ConversationBackupPath})");
             ctx.Reply($"Battle Sidecar: {(config.Sidecar.Enabled ? "ON" : "OFF")}");
 
             if (config.Sidecar.Enabled)
@@ -1152,6 +1153,7 @@ public static class AdminCommands
             // Reload config
             ConfigLoader.ReloadAIConfig();
             var aiConfig = ConfigLoader.LoadAIConfig();
+            BattleLuckPlugin.ConfigureConversationBackup(aiConfig);
 
             if (aiConfig.Enabled)
             {

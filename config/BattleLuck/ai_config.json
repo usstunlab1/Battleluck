@@ -60,6 +60,11 @@
     "store_conversation_history": false,
     "max_conversation_history_size": 0
   },
+  "chat_backup": {
+    "enabled": false,
+    "retention_days": 30,
+    "max_file_size_mb": 8
+  },
   "event_authoring": {
     "enabled": true,
     "max_actions_per_event": 1000,

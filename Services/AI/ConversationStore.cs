@@ -45,6 +45,12 @@ public sealed class ConversationStore
     readonly Dictionary<ulong, InteractiveSession> _interactiveSessions = new();
     readonly int _maxTurns;
 
+    /// <summary>
+    /// Raised after a turn is accepted. Server-owned consumers can persist an
+    /// opt-in backup without coupling the in-memory history to a file format.
+    /// </summary>
+    public event Action<ConversationTurn>? TurnAppended;
+
     public ConversationStore(int maxTurns = 200)
     {
         _maxTurns = maxTurns;
@@ -58,6 +64,16 @@ public sealed class ConversationStore
             _turns.Add(turn);
             if (_turns.Count > _maxTurns)
                 _turns.RemoveRange(0, _turns.Count - _maxTurns);
+        }
+
+        // A backup writer must never be able to break the live chat path.
+        try
+        {
+            TurnAppended?.Invoke(turn);
+        }
+        catch
+        {
+            // Individual consumers own their diagnostics; history remains usable.
         }
     }
 

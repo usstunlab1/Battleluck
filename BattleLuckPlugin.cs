@@ -60,8 +60,37 @@ public class BattleLuckPlugin : BasePlugin
     static EntityQuery? _playerQuery;
     static AiHologramService? _hologramService;
     static LocalAiRuntimeManager? _localAiRuntime;
+    static ConversationBackupService? _conversationBackup;
     public static bool IsInitialized => Core.IsInitialized;
     public static bool IsDiscordBridgeEnabled => _discordBridge != null;
+    public static bool IsConversationBackupEnabled => _conversationBackup?.Enabled == true;
+    public static string ConversationBackupPath => _conversationBackup?.RootPath ?? Path.Combine(ConfigLoader.ConfigRoot, "chat-backups");
+
+    /// <summary>
+    /// Configure the optional server-side per-player AI chat backup. This never
+    /// writes to a player's client; it stores JSONL files under the game server.
+    /// </summary>
+    public static void ConfigureConversationBackup(AIConfig config)
+    {
+        _conversationBackup?.Dispose();
+        _conversationBackup = null;
+
+        if (!config.ChatBackup.Enabled)
+            return;
+
+        try
+        {
+            _conversationBackup = new ConversationBackupService(
+                config.ChatBackup,
+                ConfigLoader.ConfigRoot,
+                LogWarning);
+            LogInfo($"[BattleLuck] Per-player AI chat backup enabled at {_conversationBackup.RootPath}");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"[BattleLuck] Failed to initialize AI chat backup: {ex.Message}");
+        }
+    }
 
     public static void SetAIAssistant(AIAssistant? assistant)
     {
@@ -562,6 +591,7 @@ public class BattleLuckPlugin : BasePlugin
                 try
                 {
                     var aiConfig = ConfigLoader.LoadAIConfig();
+                    ConfigureConversationBackup(aiConfig);
 
                     // Wire Discord webhook for full mod log forwarding
                     BattleLuckLogger.SetDiscordWebhook(aiConfig.Messaging.DiscordWebhookUrl);
@@ -712,6 +742,8 @@ public class BattleLuckPlugin : BasePlugin
         AiGroupProjectMBridge = null;
         AIAssistant?.Shutdown();
         AIAssistant = null;
+        _conversationBackup?.Dispose();
+        _conversationBackup = null;
         _localAiRuntime?.Dispose();
         _localAiRuntime = null;
         _discordBridge?.Dispose();

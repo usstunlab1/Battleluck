@@ -48,6 +48,11 @@ AI installation. The server owner configures `BepInEx/config/BattleLuck/ai_confi
 - Admin previews, approvals, and the server main-thread dispatcher protect live
   event/NPC/world mutations.
 
+The server owner may optionally enable per-player AI chat backups in
+`ai_config.json`. Backups stay on the dedicated server under
+`BepInEx/config/BattleLuck/chat-backups/`; players do not install a backup client
+and the plugin does not write to their local game folders.
+
 Use `.aistatus` to inspect provider health. Admins can reload configuration with
 `.ai.reload`. Conversation history is off by default.
 
