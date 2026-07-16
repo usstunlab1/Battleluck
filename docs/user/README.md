@@ -86,9 +86,26 @@ To enable AI:
 
 ## Commands
 
-All admin commands require admin permissions and use the `.` prefix. See the command reference below.
+`.ai` is the primary BattleLuck command. All commands use the `.` prefix, and
+`.help` shows the live permission-aware list. Event, NPC, boss, roadmap, schematic,
+and reload commands are optional admin tools and are only available when the
+corresponding feature is enabled.
 
-### Admin Commands
+### Primary AI Commands
+
+| Command | Description |
+|---------|-------------|
+| `.ai <message>` | Chat with the AI assistant or request a change |
+| `.aistatus` | Check AI assistant status and settings |
+| `.ai catalog search <query>` | Search verified action catalog |
+| `.ai event request <change>` | Draft an event or mod edit |
+| `.ai event preview <id>` | Preview a proposed edit |
+| `.ai event approve <id>` | Apply an approved edit |
+| `.ai event rollback <id>` | Roll back a supported operation |
+| `.ai.reload` | Reload AI configuration (admin) |
+| `.ai.status` | Check detailed AI provider status (admin) |
+
+### Optional Admin Commands
 
 | Command | Description |
 |---------|-------------|
@@ -107,26 +124,13 @@ All admin commands require admin permissions and use the `.` prefix. See the com
 | `.npc.despawn <npcId\|all>` | Despawn controlled NPCs |
 | `.schematic.list` | List loaded schematics |
 
-### Player Commands
+### Optional Player Event Commands
 
 | Command | Description |
 |---------|-------------|
 | `.score` | Show current score |
 | `.elo` | Show ELO rating |
 | `.exit` | Exit current mode |
-
-### AI Commands
-
-| Command | Description |
-|---------|-------------|
-| `.ai.reload` | Reload AI configuration |
-| `.ai.status` | Check detailed AI provider status |
-| `.aistatus` | Check AI assistant status and settings |
-| `.ai catalog search <query>` | Search verified action catalog |
-| `.ai event request <change>` | Draft an event or mod edit |
-| `.ai event preview <id>` | Preview a proposed edit |
-| `.ai event approve <id>` | Apply an approved edit |
-| `.ai chat <message>` | Chat with AI assistant |
 
 ## Discord Integration
 

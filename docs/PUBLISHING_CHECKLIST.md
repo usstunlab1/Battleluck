@@ -38,7 +38,9 @@ Run a secret scan before upload:
 rg -n "cfat[_]|cfut[_]|discord[.]com/api/webhooks|GOOGLE_AI_API_KEY\\s*=\\s*[^\\s#]+|CLOUDFLARE_AI_API_TOKEN\\s*=\\s*[^\\s#]+" .
 ```
 
-On a clean server, smoke-test `.bl.help`, `.aistatus`, `.modelist`, `.event.status`, and one private event before publishing.
+On a clean server, smoke-test `.help`, `.ai`, and `.aistatus`. Only smoke-test
+`.modelist`, `.event.status`, or a private event when those optional features are
+enabled in the release configuration.
 
 ## Versioning
 

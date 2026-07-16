@@ -23,57 +23,65 @@ AI is optional and local-first. It is disabled until a server owner configures a
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
 - Optional local LLM prompts for event and mod authoring with approval gates and main-thread-safe execution.
 
-## Common commands
+## Commands
 
-All commands use the `.` prefix. This is a common-command overview, not the complete command surface. Use `.help` in game for the live permission-aware list.
+`.ai` is the primary BattleLuck interface. All commands use the `.` prefix, and
+`.help` is the live permission-aware source of truth. Other commands are optional,
+admin-only tools for servers that enable the corresponding event, NPC, schematic,
+roadmap, or integration features.
 
-### Player commands
+### Primary AI commands
 
 ```text
 .help                          Show available BattleLuck commands
+.ai <message>                  Ask the AI assistant or request an event/mod change
+.aistatus                      Show local AI status
+.ai catalog search <text>      Search verified actions and data
+.ai event request <change>     Draft an event or mod edit for review
+.ai event preview <id>         Preview a proposed edit
+.ai event approve <id>         Apply an approved edit
+.ai event rollback <id>        Roll back a supported operation
+.ai.status                     Show detailed AI provider status (admin)
+.ai.reload                     Reload AI configuration (admin)
+```
+
+Live AI changes remain preview-first and approval-gated. Use `.help` to discover
+the full `.ai` subcommand surface for the installed configuration.
+
+### Optional event and server commands
+
+These are not required for the primary AI workflow and may be unavailable to
+non-admins or when a feature is disabled:
+
+```text
 .toggleenter [modeName]        Join an event zone
-.toggleleave                   Leave an event cleanly and restore your state
+.toggleleave                   Leave an event and restore your state
 .exit                          Force-exit the current event
 .score                         Show the current scoreboard
 .elo                           Show Colosseum rating
-.ai <message>                  Ask the optional AI assistant
-.aistatus                      Show local AI status
+.reload                        Reload all BattleLuck configuration (admin)
+.start                         Force-start a prepared event session (admin)
+.rollback <operationId>        Roll back a pending operation (admin)
+.swapteam [closest|balance]    Balance or move event teams (admin)
+.swapteam.ai [options]         Balance teams and announce with AI (admin)
+.event.create <eventId>        Clone Bloodbath into a custom event (admin)
+.event.start <mode>            Start and enter an event mode (admin)
+.event.end <mode>              End a mode's active sessions (admin)
+.event.status                  Show active events and player counts (admin)
+.modelist                      List registered modes (admin)
+.bstatus                       Show live runtime status (admin)
+.npc.near [radius] [limit]      List nearby controlled NPCs (admin)
+.npc.spawn <prefab> [count]     Spawn controlled NPCs (admin)
+.npc.follow <npcId> [target]    Make an NPC follow a target (admin)
+.npc.goto <npcId> [x y z]       Move an NPC (admin)
+.npc.despawn <npcId|all>        Despawn controlled NPCs (admin)
+.boss.spawn <prefab> [id]       Spawn a controlled boss/NPC (admin)
+.boss.list                      List controlled bosses/NPCs (admin)
+.roadmap.status                 Show roadmap milestones (admin)
+.roadmap.prompt <llm|developer> Show the active prompt contract (admin)
+.schematic.list                 List loaded arena schematics (admin)
+.schematic.capture <name>       Capture a nearby schematic (admin)
 ```
-
-### Admin commands
-
-```text
-.reload                        Reload BattleLuck configuration
-.start                         Force-start your prepared event session
-.rollback <operationId>        Roll back a pending AI event operation
-.swapteam [closest|balance]    Balance or move event teams
-.swapteam.ai [options]         Balance teams and announce with AI
-.event.create <eventId>        Clone Bloodbath into a custom event
-.event.start <mode>            Start and enter an event mode
-.event.end <mode>              End a mode's active sessions
-.event.status                  Show active events and player counts
-.modelist                      List registered modes
-.bstatus                       Show live BattleLuck runtime status
-.npc.near [radius] [limit]      List nearby controlled NPCs
-.npc.spawn <prefab> [count]     Spawn controlled NPCs
-.npc.follow <npcId> [target]    Make an NPC follow a target
-.npc.goto <npcId> [x y z]       Move an NPC
-.npc.despawn <npcId|all>        Despawn controlled NPCs
-.boss.spawn <prefab> [id]       Spawn a controlled boss/NPC
-.boss.list                      List controlled bosses/NPCs
-.ai.reload                      Reload AI configuration
-.ai.status                      Show detailed AI provider status
-.ai catalog search <text>       Search verified actions and data
-.ai event request <change>      Draft an event or mod edit for review
-.ai event preview <id>          Preview a proposed edit
-.ai event approve <id>          Apply an approved edit
-.roadmap.status                 Show roadmap milestones
-.roadmap.prompt <llm|developer> Show the active prompt contract
-.schematic.list                 List loaded arena schematics
-.schematic.capture <name>       Capture a nearby schematic
-```
-
-Live AI changes remain preview-first and approval-gated. Use `.ai event rollback <operationId>` when a supported operation needs to be reverted.
 
 ### Create your own Bloodbath-style event
 

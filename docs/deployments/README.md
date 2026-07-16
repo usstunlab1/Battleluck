@@ -111,7 +111,8 @@ Do not publish `.env`, logs, player snapshots, or AI operation logs.
 3. Copy `config/BattleLuck/` to `BepInEx/config/BattleLuck/`
 4. Start local AI (if enabled): `.\scripts\start_vllm.ps1`
 5. Start the server
-6. Run `.reload`, `.ai.status`, `.modelist`
+6. Run `.help` and `.ai`; run optional `.reload`, `.ai.status`, or `.modelist` only
+   when those admin features are enabled.
 
 ## Related Documentation
 
