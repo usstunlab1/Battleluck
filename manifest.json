@@ -1,0 +1,10 @@
+{
+  "name": "BattleLuck",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/Coyoteq1/BattleLuck-AI",
+  "description": "Competitive arena game modes, event flow, and optional AI tooling for V Rising dedicated servers.",
+  "dependencies": [
+    "BepInEx-BepInExPack_V_Rising-1.733.2",
+    "deca-VampireCommandFramework-0.11.0"
+  ]
+}

@@ -1,0 +1,1 @@
+Docker is a containerization platform that packages applications and their dependencies into lightweight, portable containers.

@@ -1,0 +1,1 @@
+Qdrant is a vector database designed for efficient similarity search and semantic queries on high-dimensional vectors.
