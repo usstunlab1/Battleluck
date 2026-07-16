@@ -19,6 +19,10 @@ player/admin query
 
 The response must distinguish a suggestion, a preview, an approval, and an actual runtime result. A proposal or operation id is never proof that a game action ran.
 
+## Threading and native safety
+
+LLM and provider I/O run asynchronously so model latency does not block the game loop. The model cannot mutate native ECS state directly. After an administrator approves a verified action, the canonical action pipeline queues the native-world mutation onto the server main thread. Player loadouts and event state are saved as rollback snapshots before changes and restored through the supported native-facing services when the event exits or a rollback is requested.
+
 ## Safe operator loop
 
 1. Observe `.director`, active sessions, the action catalog, and roadmap state.

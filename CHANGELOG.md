@@ -10,3 +10,8 @@
 
 - Added README visuals and a verified command quick reference.
 - Clarified player, admin, NPC, schematic, roadmap, and AI workflows.
+
+## 1.0.2
+
+- Clarified native ECS event actions, rollback snapshots, and main-thread-safe execution.
+- Documented asynchronous LLM I/O and approval-gated native-world mutations.

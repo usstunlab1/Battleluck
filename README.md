@@ -4,11 +4,11 @@
   <img src="icon.png" alt="BattleLuck V Rising Mods" width="180">
 </p>
 
-![BattleLuck roadmap](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.1/docs/assets/roadmap-header.png)
+![BattleLuck roadmap](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.2/docs/assets/roadmap-header.png)
 
-![BattleLuck AI prompt pipeline](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.1/docs/assets/prompt-pipeline-header.png)
+![BattleLuck AI prompt pipeline](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.2/docs/assets/prompt-pipeline-header.png)
 
-BattleLuck is a server-side BepInEx plugin for V Rising. It adds event-driven arena modes, controlled NPC encounters, player loadouts, progression, teleporting, schematics, and optional local AI tools.
+BattleLuck is a server-side BepInEx plugin for V Rising. Its game-event actions run through the native ECS/action pipeline, player state is saved as rollback snapshots, and optional local LLM tools can propose verified event and mod changes. LLM network work runs asynchronously; approved native-world mutations are queued onto the server main thread for safe execution.
 
 ## Install
 
@@ -21,11 +21,11 @@ AI is optional and local-first. It is disabled until a server owner configures a
 
 ## Included features
 
-- Match-ready event flow for arena and custom V Rising events.
+- Match-ready, action-driven event flow for arena and custom V Rising events.
 - NPC control, boss commands, generic actions, and safe action reachability checks.
-- Player event sessions, loadouts, progression, death-prevention charges, and rollback snapshots.
+- Player event sessions, loadouts, progression, death-prevention charges, native-backed rollback snapshots, and restore-on-exit flows.
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
-- Optional local LLM prompts for event and mod authoring with approval gates.
+- Optional local LLM prompts for event and mod authoring with approval gates and main-thread-safe execution.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # User Guide
 
-BattleLuck is a V Rising dedicated server plugin for competitive arena modes, event management, and optional AI assistance.
+BattleLuck is a V Rising dedicated-server plugin with action-driven events, native ECS-backed rollback snapshots, and optional local LLM assistance. LLM requests run asynchronously; approved game-state changes are dispatched back to the server main thread.
 
 ## Installing BattleLuck
 
