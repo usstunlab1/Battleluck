@@ -1,12 +1,37 @@
 param(
     [string]$KindredPath = ".external/KindredExtract",
-    [string]$OutputPath = "docs/reference/kindredextract-reference.json"
+    [string]$OutputPath = "docs/reference/kindredextract-reference.json",
+    [switch]$CloneIfMissing
 )
 
 $ErrorActionPreference = "Stop"
 
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = (Resolve-Path (Join-Path $scriptRoot "..")).Path
+
+if (-not [System.IO.Path]::IsPathRooted($KindredPath)) {
+    $KindredPath = Join-Path $repoRoot $KindredPath
+}
+if (-not [System.IO.Path]::IsPathRooted($OutputPath)) {
+    $OutputPath = Join-Path $repoRoot $OutputPath
+}
+
 if (-not (Test-Path $KindredPath)) {
-    throw "KindredExtract checkout not found at '$KindredPath'. Clone https://github.com/Odjit/KindredExtract there first."
+    if (-not $CloneIfMissing) {
+        throw "KindredExtract checkout not found at '$KindredPath'. Run this script with -CloneIfMissing, or clone https://github.com/Odjit/KindredExtract there first."
+    }
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        throw "Git is required to clone KindredExtract automatically. Install Git or clone https://github.com/Odjit/KindredExtract manually."
+    }
+
+    $parent = Split-Path -Parent $KindredPath
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    Write-Output "Cloning KindredExtract to '$KindredPath'..."
+    & git clone --depth 1 https://github.com/Odjit/KindredExtract.git $KindredPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "KindredExtract clone failed with exit code $LASTEXITCODE."
+    }
 }
 
 $projectPath = Join-Path $KindredPath "KindredExtract.csproj"
@@ -57,12 +82,17 @@ if (Test-Path $systemQueryPath) {
     } | Sort-Object -Unique
 }
 
-$sourceHits = Get-ChildItem $KindredPath -Recurse -File -Include *.cs,*.csproj,*.md |
+$kindredRoot = (Resolve-Path $KindredPath).Path
+$sourcePathForSnapshot = $kindredRoot
+if ($kindredRoot.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $sourcePathForSnapshot = $kindredRoot.Substring($repoRoot.Length).TrimStart('\', '/')
+}
+$sourceHits = Get-ChildItem $kindredRoot -Recurse -File -Include *.cs,*.csproj,*.md |
     Where-Object { $_.FullName -notmatch '\\.git\\' } |
     Select-String -Pattern 'EOS|Eos|Epic|Steam|Network|ServerBootstrap|ProjectM|Unity\.Entities|PrefabGUID' |
     ForEach-Object {
         [pscustomobject]@{
-            file = $_.Path.Substring((Resolve-Path $KindredPath).Path.Length).TrimStart('\', '/')
+            file = $_.Path.Substring($kindredRoot.Length).TrimStart('\', '/')
             line = $_.LineNumber
             text = $_.Line.Trim()
         }
@@ -70,7 +100,7 @@ $sourceHits = Get-ChildItem $KindredPath -Recurse -File -Include *.cs,*.csproj,*
 
 $snapshot = [pscustomobject]@{
     source = "https://github.com/Odjit/KindredExtract"
-    sourcePath = $KindredPath
+    sourcePath = $sourcePathForSnapshot.Replace('\', '/')
     extractedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
     license = "AGPL-3.0; keep source as reference unless BattleLuck accepts compatible licensing obligations."
     counts = [pscustomobject]@{

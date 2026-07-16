@@ -9,6 +9,8 @@ Purpose: keep a local reference inventory for V Rising ECS, ProjectM, Unity, Stu
 KindredExtract is AGPL-3.0. Do not paste large source files from it into BattleLuck unless the project intentionally accepts AGPL-compatible obligations. Prefer using it as a reference for names, runtime patterns, and server-only discovery workflows, then implement BattleLuck-native code.
 
 The local checkout lives under `.external/KindredExtract` and is ignored by Git.
+KindredExtract itself is a separate developer-only BepInEx mod; it is not bundled
+inside BattleLuck and should not be enabled on a live production server.
 
 ## Useful Patterns Found
 
@@ -29,11 +31,21 @@ The local checkout lives under `.external/KindredExtract` and is ignored by Git.
 
 ## Refresh Command
 
-Run this after updating `.external/KindredExtract`:
+Run this from any directory after updating `.external/KindredExtract`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools/extract-kindredextract-reference.ps1
+powershell -ExecutionPolicy Bypass -File tools/extract-kindredextract-reference.ps1 -CloneIfMissing
 ```
+
+`-CloneIfMissing` downloads the upstream checkout when it is not present. The
+script only reads the source and refreshes BattleLuck's reference JSON; it does
+not install the KindredExtract DLL or run dump commands in the game.
+
+To use the actual mod, install the upstream release and its matching BepInEx/
+VampireCommandFramework dependencies in the V Rising server's `BepInEx/plugins`
+directory, then use its documented `.state`, `.entity`, and `.dump` commands.
+See [Odjit/KindredExtract](https://github.com/Odjit/KindredExtract) for the
+version-specific installation and compatibility notes.
 
 It writes `docs/reference/kindredextract-reference.json` with:
 
