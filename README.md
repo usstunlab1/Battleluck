@@ -103,7 +103,11 @@ dotnet build .\BattleLuck.sln -c Release `
 ```
 
 For a private AI provider, run `docker compose -f docker-compose.ai.yml up -d`,
-confirm `http://127.0.0.1:11434` is reachable, then use `.ai.reload` in game.
+confirm `http://127.0.0.1:11434` is reachable from the V Rising server, then use
+`.ai.reload` in game. `127.0.0.1` is correct when Ollama is installed on the same
+server as V Rising. If Ollama runs on another host, set `llama_api.base_url` to
+`http://<AI-SERVER-PRIVATE-IP>:11434` instead and allow that private network
+connection through the firewall. Players never need to connect to this endpoint.
 See the [self-hosted operations guide](docs/OPEN_SOURCE_SELF_HOSTED.md) for
 provider, packaging, and release details.
 

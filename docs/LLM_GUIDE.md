@@ -38,6 +38,12 @@ Default endpoint:
 http://127.0.0.1:11434
 ```
 
+This is the loopback address of the V Rising server and is correct when the
+provider runs on that same host. For a provider on another machine, set
+`llama_api.base_url` to `http://<AI-SERVER-PRIVATE-IP>:11434` and restrict the
+firewall to the game server. The provider endpoint is server-to-server; players
+do not connect to it.
+
 Default model label:
 
 ```

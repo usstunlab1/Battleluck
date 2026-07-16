@@ -65,11 +65,13 @@ docker compose -f docker-compose.ai.yml up -d
 docker compose -f docker-compose.ai.yml logs -f llama2-init
 ```
 
-The default endpoint is `http://127.0.0.1:11434`. Configure
-`BepInEx/config/BattleLuck/ai_config.json`, then run `.ai.reload` and
-`.aistatus`. If no provider is reachable, BattleLuck keeps its deterministic
-local fallback for basic help and catalog guidance. Players do not need to run
-Ollama or install a model; only the server owner does.
+The default endpoint is `http://127.0.0.1:11434`, which means the same machine
+as the V Rising server. Configure `BepInEx/config/BattleLuck/ai_config.json`,
+then run `.ai.reload` and `.aistatus`. If Ollama is on a separate machine, use
+its private address instead, for example
+`http://192.168.1.50:11434`, and allow only the V Rising server through the
+firewall. Do not expose the Ollama port to the public internet. Players do not
+need to run Ollama or install a model; only the server owner does.
 
 Hosted providers, Discord, MCP, and sidecars are opt-in. Keep credentials outside
 the repository and do not publish model files, player snapshots, or AI logs.
