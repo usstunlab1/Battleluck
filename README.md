@@ -1,12 +1,6 @@
 # BattleLuck
 
-<p align="center">
-  <img src="icon.png" alt="BattleLuck V Rising Mods" width="180">
-</p>
-
 ![BattleLuck roadmap](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.2/docs/assets/roadmap-header.png)
-
-![BattleLuck AI prompt pipeline](https://raw.githubusercontent.com/usstunlab1/Battleluck-/v1.0.2/docs/assets/prompt-pipeline-header.png)
 
 BattleLuck is a server-side BepInEx plugin for V Rising. Its game-event actions run through the native ECS/action pipeline, player state is saved as rollback snapshots, and optional local LLM tools can propose verified event and mod changes. LLM network work runs asynchronously; approved native-world mutations are queued onto the server main thread for safe execution.
 
