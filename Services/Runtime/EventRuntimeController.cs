@@ -42,7 +42,7 @@ public sealed class EventRuntimeController
             Zones = definition.Zones.Count,
             Objects = definition.Objects.Count,
             Glows = definition.Glows.Count,
-            EntityDefinitions = definition.VBloodList.Count,
+            EntityDefinitions = (definition.Entities.Count > 0 ? definition.Entities.Count : definition.VBloodList.Count),
             Phases = definition.Phases.Count,
             Triggers = definition.Triggers.Count,
             EventActions = definition.Actions.Count,
