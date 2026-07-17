@@ -187,10 +187,11 @@ public sealed class EventRuntimeController
         if (phaseName.Equals("active", StringComparison.OrdinalIgnoreCase))
         {
             runtime.Started = true;
-            // New unified entities spawn path
-            SpawnEventEntities(runtime);
-            // Legacy VBlood spawn path (to be removed after full migration)
-            SpawnEventVBloods(runtime);
+            // Prefer unified entities[] when present; otherwise fall back to legacy VBlood list.
+            if (runtime.Definition.Entities.Count > 0)
+                SpawnEventEntities(runtime);
+            else
+                SpawnEventVBloods(runtime);
         }
 
         ExecuteActions(runtime, phase.Actions, $"phase:{phaseName}");
