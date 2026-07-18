@@ -1,0 +1,40 @@
+# BattleLuck Project Commands - Copy with . prefix
+# ================================================
+
+# Build & Compile
+. dotnet build BattleLuck.csproj
+. dotnet build --configuration Release
+. dotnet clean
+. dotnet restore
+
+# Test Commands
+. dotnet test BattleLuck.Tests/BattleLuck.Tests.csproj
+. dotnet test --collect:"XPlat Code Coverage"
+
+# Docker Commands (for AI runtime)
+. docker-compose -f docker-compose.ai.yml up -d
+. docker-compose -f docker-compose.ai.yml down
+. docker-compose -f docker-compose.ai.yml build
+. docker-compose -f docker-compose.ai.yml logs -f
+
+# Git Commands
+. git status
+. git add .
+. git commit -m "message"
+. git push
+. git pull
+. git log --oneline -10
+
+# Project Analysis
+. dotnet list package
+. dotnet list reference
+. dotnet --info
+
+# Run AI Assets (Python)
+. cd ai-assets
+. pip install -r requirements.txt
+. python app.py
+
+# Run from project root
+. cd c:\Users\ahmad\OneDrive\Desktop\BL
+. dotnet run --project BattleLuck.csproj
