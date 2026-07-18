@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Stunlock.Core;
+
 public static class BuildPaletteService
 {
     static readonly object LockObj = new();

@@ -1,4 +1,8 @@
-﻿public static class MutatorCommands
+﻿using System.Collections.Generic;
+using System.Linq;
+using VampireCommandFramework;
+
+public static class MutatorCommands
 {
     static readonly Dictionary<string, MutatorDef> _available = new()
     {

@@ -1,3 +1,7 @@
+using Stunlock.Core;
+using Unity.Entities;
+using Unity.Mathematics;
+
 /// <summary>
 /// Enforces zone boundary via DOT buffs with proper lifetime control (VAMP pattern).
 /// Distance bands from zone center:

@@ -1,12 +1,12 @@
 using System.Collections;
-using System.IO;
 using System.Reflection;
+using System.IO;
 using System.Text.Json;
-using BattleLuck.Models;
 using Stunlock.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using BattleLuck.Models;
 
 /// <summary>
 /// Reflection-based prefab name → PrefabGUID resolver with 3-tier fallback:
@@ -17,24 +17,19 @@ public static class PrefabHelper
 {
     static readonly Dictionary<string, PrefabGUID> _exactCache = new();
     static readonly Dictionary<string, PrefabGUID> _lowerCache = new(StringComparer.OrdinalIgnoreCase);
-    static volatile bool _initialized;
-    static readonly object _initLock = new();
+    static bool _initialized;
 
     static void EnsureInitialized()
     {
         if (_initialized) return;
-        lock (_initLock)
+        _initialized = true;
+
+        foreach (var field in typeof(Prefabs).GetFields(BindingFlags.Public | BindingFlags.Static))
         {
-            if (_initialized) return;
-            // Limit reflection scope to declared public static fields of Prefabs only
-            foreach (var field in typeof(Prefabs).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
-            {
-                if (field.FieldType != typeof(PrefabGUID)) continue;
-                var value = (PrefabGUID)field.GetValue(null)!;
-                _exactCache[field.Name] = value;
-                _lowerCache[field.Name] = value;
-            }
-            _initialized = true;
+            if (field.FieldType != typeof(PrefabGUID)) continue;
+            var value = (PrefabGUID)field.GetValue(null)!;
+            _exactCache[field.Name] = value;
+            _lowerCache[field.Name] = value;
         }
     }
 
@@ -53,29 +48,27 @@ public static class PrefabHelper
         if (_lowerCache.TryGetValue(name, out guid))
             return true;
 
-        // Tier 3: structured single partial match (prefer prefix)
-        // 3a. single prefix match
+        // Tier 3: single partial match
         PrefabGUID? found = null;
-        foreach (var kvp in _exactCache)
-        {
-            if (kvp.Key.StartsWith(name, StringComparison.OrdinalIgnoreCase))
-            {
-                if (found.HasValue) { guid = default; return false; }
-                found = kvp.Value;
-            }
-        }
-        if (found.HasValue) { guid = found.Value; return true; }
-
-        // 3b. single substring match
         foreach (var kvp in _exactCache)
         {
             if (kvp.Key.Contains(name, StringComparison.OrdinalIgnoreCase))
             {
-                if (found.HasValue) { guid = default; return false; }
+                if (found.HasValue)
+                {
+                    // Multiple matches — ambiguous, fail
+                    guid = default;
+                    return false;
+                }
                 found = kvp.Value;
             }
         }
-        if (found.HasValue) { guid = found.Value; return true; }
+
+        if (found.HasValue)
+        {
+            guid = found.Value;
+            return true;
+        }
 
         guid = default;
         return false;
@@ -90,12 +83,8 @@ public static class PrefabHelper
     /// </summary>
     public static bool ValidatePrefab(PrefabGUID guid)
     {
-        try
-        {
-            var pcs = VRisingCore.PrefabCollectionSystem;
-            return pcs._PrefabGuidToEntityMap.ContainsKey(guid);
-        }
-        catch { return false; }
+        var pcs = VRisingCore.PrefabCollectionSystem;
+        return pcs._PrefabGuidToEntityMap.ContainsKey(guid);
     }
 
     /// <summary>Get prefab name from GUID by reverse lookup in registry.</summary>
@@ -119,10 +108,9 @@ public static class PrefabHelper
 
     // ── Live PrefabCollectionSystem scanner ──────────────────────────────
 
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, PrefabGUID> _liveCache = new(StringComparer.OrdinalIgnoreCase);
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<PrefabGUID, string> _liveNameCache = new();
-    static volatile bool _liveScanned;
-    static readonly object _liveScanLock = new();
+    static readonly Dictionary<string, PrefabGUID> _liveCache = new(StringComparer.OrdinalIgnoreCase);
+    static readonly Dictionary<PrefabGUID, string> _liveNameCache = new();
+    static bool _liveScanned;
     static readonly string[] _prefabNameMapMembers =
     {
         "PrefabGuidToNameDictionary",
@@ -143,81 +131,80 @@ public static class PrefabHelper
     public static void ScanLivePrefabs()
     {
         if (_liveScanned) return;
-        lock (_liveScanLock)
+
+        // Eagerly load from the archive first (Data/render-prefabs.json)
+        LoadArchiveNames(Path.Combine("Data", "render-prefabs.json"));
+
+        try
         {
-            if (_liveScanned) return;
+            var pcs = VRisingCore.PrefabCollectionSystem;
 
-            // Eagerly load from the archive first (Data/render-prefabs.json)
-            LoadArchiveNames(Path.Combine("Data", "render-prefabs.json"));
-
-            try
+            // Try name dictionary first (reflection)
+            foreach (var kvp in EnumerateLivePrefabNames(pcs))
             {
-                var pcs = VRisingCore.PrefabCollectionSystem;
+                _liveCache.TryAdd(kvp.Value, kvp.Key);
+                _liveNameCache[kvp.Key] = kvp.Value;
+            }
 
-                // Try name dictionary first (reflection)
-                foreach (var kvp in EnumerateLivePrefabNames(pcs))
+            // Fallback: use _PrefabLookupMap.GetName() (KindredCommands approach)
+            if (_liveCache.Count == 0)
+            {
+                try
                 {
-                    _liveCache.TryAdd(kvp.Value, kvp.Key);
-                    _liveNameCache[kvp.Key] = kvp.Value;
+                    var lookupMap = pcs._PrefabLookupMap;
+                    var entityMap = pcs._PrefabGuidToEntityMap;
+                    var enumerator = entityMap.GetEnumerator();
+                    int named = 0, unnamed = 0;
+                    while (enumerator.MoveNext())
+                    {
+                        var guid = enumerator.Current.Key;
+                        string? prefabName;
+                        try
+                        {
+                            prefabName = lookupMap.GetName(guid);
+                        }
+                        catch
+                        {
+                            prefabName = null;
+                        }
+                        if (string.IsNullOrEmpty(prefabName))
+                        {
+                            prefabName = $"GUID_{guid.GuidHash}";
+                            unnamed++;
+                        }
+                        else
+                        {
+                            named++;
+                        }
+                        _liveCache.TryAdd(prefabName, guid);
+                        _liveNameCache.TryAdd(guid, prefabName);
+                    }
+                    BattleLuckPlugin.LogInfo($"[PrefabHelper] _PrefabLookupMap scan: {named} named, {unnamed} unnamed prefabs indexed.");
                 }
-
-                // Fallback: use _PrefabLookupMap.GetName() if nothing found
-                if (_liveCache.IsEmpty)
+                catch (Exception mapEx)
                 {
-                    try
+                    BattleLuckPlugin.LogWarning($"[PrefabHelper] _PrefabLookupMap failed: {mapEx.Message}, falling back to GUID-only indexing.");
+                    var map = pcs._PrefabGuidToEntityMap;
+                    var enumerator = map.GetEnumerator();
+                    int count = 0;
+                    while (enumerator.MoveNext())
                     {
-                        var lookupMap = pcs._PrefabLookupMap;
-                        var entityMap = pcs._PrefabGuidToEntityMap;
-                        int named = 0, unnamed = 0;
-                        foreach (var pair in entityMap)
-                        {
-                            var guid = pair.Key;
-                            string? prefabName;
-                            try { prefabName = lookupMap.GetName(guid); }
-                            catch { prefabName = null; }
-
-                            if (string.IsNullOrEmpty(prefabName))
-                            {
-                                prefabName = $"GUID_{guid.GuidHash}";
-                                unnamed++;
-                            }
-                            else
-                            {
-                                named++;
-                            }
-                            _liveCache.TryAdd(prefabName, guid);
-                            _liveNameCache.TryAdd(guid, prefabName);
-                        }
-                        BattleLuckPlugin.LogInfo($"[PrefabHelper] _PrefabLookupMap scan: {named} named, {unnamed} unnamed prefabs indexed.");
+                        var guid = enumerator.Current.Key;
+                        var hashName = $"GUID_{guid.GuidHash}";
+                        _liveCache.TryAdd(hashName, guid);
+                        _liveNameCache.TryAdd(guid, hashName);
+                        count++;
                     }
-                    catch (Exception mapEx)
-                    {
-                        BattleLuckPlugin.LogWarning($"[PrefabHelper] _PrefabLookupMap failed: {mapEx.Message}, falling back to GUID-only indexing.");
-                        var map = pcs._PrefabGuidToEntityMap;
-                        int count = 0;
-                        foreach (var pair in map)
-                        {
-                            var guid = pair.Key;
-                            var hashName = $"GUID_{guid.GuidHash}";
-                            _liveCache.TryAdd(hashName, guid);
-                            _liveNameCache.TryAdd(guid, hashName);
-                            count++;
-                        }
-                        BattleLuckPlugin.LogInfo($"[PrefabHelper] Fallback indexed {count} prefab GUIDs from entity map.");
-                    }
+                    BattleLuckPlugin.LogInfo($"[PrefabHelper] Fallback indexed {count} prefab GUIDs from entity map.");
                 }
+            }
 
-                BattleLuckPlugin.LogInfo($"[PrefabHelper] Live scan complete: {_liveCache.Count} prefabs indexed.");
-            }
-            catch (Exception ex)
-            {
-                BattleLuckPlugin.LogWarning($"[PrefabHelper] Live scan failed: {ex.Message}");
-            }
-            finally
-            {
-                // Mark as scanned to avoid repeated expensive attempts if environment is unstable
-                _liveScanned = true;
-            }
+            _liveScanned = true;
+            BattleLuckPlugin.LogInfo($"[PrefabHelper] Live scan complete: {_liveCache.Count} prefabs indexed.");
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[PrefabHelper] Live scan failed: {ex.Message}");
         }
     }
 
@@ -231,19 +218,9 @@ public static class PrefabHelper
             if (!File.Exists(jsonPath)) return;
             var json = File.ReadAllText(jsonPath);
             var archive = JsonSerializer.Deserialize<PrefabArchive>(json);
-            if (archive == null)
-            {
-                BattleLuckPlugin.LogWarning("[PrefabHelper] Archive JSON deserialized to null object.");
-                return;
-            }
+            if (archive == null) return;
 
             int added = 0;
-            if (archive.Prefabs == null)
-            {
-                BattleLuckPlugin.LogWarning("[PrefabHelper] Archive.Prefabs is null; no names loaded.");
-                return;
-            }
-
             foreach (var kvp in archive.Prefabs)
             {
                 if (int.TryParse(kvp.Key, out int hash))
@@ -280,18 +257,8 @@ public static class PrefabHelper
         if (_liveCache.TryGetValue(name, out var guid))
             return guid;
 
-        // Structured single partial match: prefer prefix, then substring; fail on ambiguity
+        // Single partial match
         PrefabGUID? found = null;
-        foreach (var kvp in _liveCache)
-        {
-            if (kvp.Key.StartsWith(name, StringComparison.OrdinalIgnoreCase))
-            {
-                if (found.HasValue) return null; // ambiguous
-                found = kvp.Value;
-            }
-        }
-        if (found.HasValue) return found;
-
         foreach (var kvp in _liveCache)
         {
             if (kvp.Key.Contains(name, StringComparison.OrdinalIgnoreCase))

@@ -4,6 +4,9 @@
 // All callers — commands, AI, webhooks, MCP, EventRuntimeController —
 // must go through this interface.
 
+using BattleLuck.Models;
+using BattleLuck.Services.Flow;
+
 namespace BattleLuck.Services.Runtime;
 
 /// <summary>

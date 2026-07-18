@@ -1,3 +1,5 @@
+using Unity.Entities;
+
 namespace BattleLuck.Services;
 
 /// <summary>Canonical owner for event loadout mutation and snapshot rollback.</summary>

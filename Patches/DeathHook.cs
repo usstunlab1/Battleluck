@@ -1,4 +1,7 @@
 ﻿using HarmonyLib;
+using ProjectM;
+using Unity.Collections;
+using Unity.Entities;
 
 /// <summary>
 /// Harmony patch on DeathEventListenerSystem.OnUpdate to detect kills

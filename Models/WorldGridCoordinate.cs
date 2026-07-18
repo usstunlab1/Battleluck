@@ -1,3 +1,6 @@
+using System.Globalization;
+using Unity.Mathematics;
+
 namespace BattleLuck.Models;
 
 /// <summary>

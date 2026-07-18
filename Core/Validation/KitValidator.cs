@@ -1,3 +1,5 @@
+using BattleLuck.Utilities;
+
 namespace BattleLuck.Core.Validation;
 
 public static class KitValidator

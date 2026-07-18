@@ -3,6 +3,9 @@
 //
 // Canonical keys:  modeId, displayName
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace BattleLuck.Models;
 
 /// <summary>

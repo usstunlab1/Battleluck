@@ -1,3 +1,9 @@
+using Unity.Entities;
+using ProjectM;
+using Stunlock.Core;
+using BattleLuck.Utilities;
+using System.Collections.Generic;
+
 namespace BattleLuck.Services.Progression;
 
 public static class ProgressionController

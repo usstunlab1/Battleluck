@@ -1,3 +1,7 @@
+using Unity.Entities;
+using Unity.Mathematics;
+using Stunlock.Core;
+
 /// <summary>
 /// Attaches glow effects to spawnable entities in a zone. Batched execution to avoid server spikes.
 /// Reacts to GameEvents.OnModeStarted / OnModeEnded.

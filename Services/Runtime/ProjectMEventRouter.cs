@@ -1,4 +1,6 @@
+using System;
 using BattleLuck.ECS.Events;
+using Unity.Entities;
 
 namespace BattleLuck.Services.Runtime;
 // ─────────────────────────────────────────────────────────────────────────────

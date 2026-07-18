@@ -1,4 +1,8 @@
-﻿public static class ModeCommands
+﻿using System.Collections.Generic;
+using System.Linq;
+using VampireCommandFramework;
+
+public static class ModeCommands
 {
     [Command("modelist", description: "List all registered game modes", adminOnly: true)]
     public static void ListModes(ChatCommandContext ctx)

@@ -1,3 +1,5 @@
+using BattleLuck.Models;
+
 namespace BattleLuck.Services.Runtime
 {
     /// <summary>

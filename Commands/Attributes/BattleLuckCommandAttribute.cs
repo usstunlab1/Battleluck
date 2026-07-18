@@ -1,3 +1,5 @@
+using System;
+
 namespace BattleLuck.Commands;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]

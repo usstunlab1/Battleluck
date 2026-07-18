@@ -1,3 +1,7 @@
+using Stunlock.Core;
+using Unity.Entities;
+using Unity.Mathematics;
+
 /// <summary>
 /// Scans environment entities (trees, rocks) in a donut ring around the moving arena edge
 /// and applies glow effects. MAX_GLOW_BORDER entities to avoid perf issues.

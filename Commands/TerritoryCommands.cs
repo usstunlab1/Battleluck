@@ -1,3 +1,5 @@
+using Unity.Entities;
+using VampireCommandFramework;
 using BattleLuck.Services;
 
 namespace BattleLuck.Commands;

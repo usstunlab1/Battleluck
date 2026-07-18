@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Text;
+using Unity.Entities;
 
 namespace BattleLuck.Services.AI;
 

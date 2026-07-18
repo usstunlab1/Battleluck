@@ -1,4 +1,6 @@
+using BattleLuck.Models;
 using BattleLuck.Services;
+using VampireCommandFramework;
 
 namespace BattleLuck.Commands;
 

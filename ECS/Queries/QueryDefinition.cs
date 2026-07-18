@@ -1,3 +1,5 @@
+using Unity.Entities;
+
 namespace BattleLuck.ECS.Queries;
 
 /// <summary>

@@ -1,3 +1,6 @@
+using Unity.Entities;
+using Stunlock.Core;
+
 /// <summary>
 /// Handles the special PvP transformation item. When a player acquires the configured item,
 /// it triggers snapshot save → rename → blood change → kit apply → notify.

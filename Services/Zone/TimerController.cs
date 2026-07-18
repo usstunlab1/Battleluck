@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System;
+
+/// <summary>
 /// Manages countdown timers for timed game modes (Trials, Bloodbath, etc).
 /// Supports time bonuses and time penalties.
 /// </summary>

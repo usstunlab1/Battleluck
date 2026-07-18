@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 /// <summary>
 /// Mode configuration loader for kit and mode config paths.
 /// Provides centralized access to configuration directories.

@@ -1,3 +1,6 @@
+using Unity.Entities;
+using Unity.Collections;
+
 namespace BattleLuck.ECS.Actions.Components;
 
 /// <summary>

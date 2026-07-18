@@ -1,4 +1,8 @@
+using System;
 using System.Reflection;
+using ProjectM;
+using Unity.Entities;
+using VampireCommandFramework;
 
 namespace BattleLuck.Commands;
 

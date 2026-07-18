@@ -3,6 +3,8 @@
 // Thread-safe registry of ActionCapabilityDescriptors.
 // Pure C# — no BepInEx/VRising/Unity references.
 
+using System.Threading.Tasks;
+
 namespace BattleLuck.Services.Runtime;
 
 /// <summary>

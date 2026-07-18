@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace BattleLuck.Models
 {
     /// <summary>

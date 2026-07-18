@@ -1,5 +1,7 @@
 namespace BattleLuck.Core.Validation;
 
+using BattleLuck.Utilities;
+
 public static class PrefabValidator
 {
     public static IReadOnlyList<string> Validate(string modeId, ModeConfig config)

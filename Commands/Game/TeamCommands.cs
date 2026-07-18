@@ -1,4 +1,8 @@
-﻿public static class TeamCommands
+﻿using System.Collections.Generic;
+using System.Linq;
+using VampireCommandFramework;
+
+public static class TeamCommands
 {
     static readonly Dictionary<string, BattleTeam> _teams = new();
     static readonly Dictionary<ulong, string> _playerTeam = new();

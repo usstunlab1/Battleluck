@@ -1,3 +1,7 @@
+using ProjectM.Network;
+using Stunlock.Core;
+using Unity.Entities;
+
 /// <summary>
 /// Routes completed crafting rules to the kit application system.
 ///

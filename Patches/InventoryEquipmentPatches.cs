@@ -1,5 +1,9 @@
 using HarmonyLib;
+using ProjectM.Network;
 using ProjectM.Shared;
+using Stunlock.Core;
+using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 [HarmonyPatch]

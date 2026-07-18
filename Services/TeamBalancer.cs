@@ -1,3 +1,4 @@
+using Unity.Entities;
 using BattleLuck.ECS.Actions.Components;
 
 namespace BattleLuck.Services;

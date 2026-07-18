@@ -1,3 +1,6 @@
+using System.Text.Json;
+using BattleLuck.Models;
+
 namespace BattleLuck.Services;
 
 /// <summary>Server-authoritative persistent world/event clan task state.</summary>

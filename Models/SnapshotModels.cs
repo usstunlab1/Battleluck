@@ -1,3 +1,5 @@
+using Stunlock.Core;
+
 /// <summary>
 /// Versioned snapshot contract — captures full entity state per player.
 /// 13-category storage contract: position, health, energy, blood, equipment levels,

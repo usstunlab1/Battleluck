@@ -1,3 +1,6 @@
+using System.Text;
+using BattleLuck.Models;
+
 namespace BattleLuck.Services;
 
 public static class ClanTaskPresenter

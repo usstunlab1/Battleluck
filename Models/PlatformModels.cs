@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 /// <summary>Config for the 5x5 moving battle platform (Bloodbath only).</summary>
 public sealed class MovingPlatformConfig
 {

@@ -1,4 +1,7 @@
-﻿/// <summary>
+﻿using System;
+using System.Collections.Generic;
+
+/// <summary>
 /// Tracks and calculates Elo ratings for ranked modes (Colosseum).
 /// Uses standard Elo formula with configurable K-factor.
 /// </summary>

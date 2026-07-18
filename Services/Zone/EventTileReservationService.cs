@@ -1,3 +1,7 @@
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+
 namespace BattleLuck.Services.Zone;
 
 /// <summary>

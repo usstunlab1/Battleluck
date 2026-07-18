@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 public sealed class WebhookConfig
 {
     [JsonPropertyName("enabled")]

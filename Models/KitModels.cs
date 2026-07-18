@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 /// <summary>
 /// Data models for kit.json — ArenaBuilds-style build schema.
 /// Each mode has one kit.json defining the full loadout applied on zone entry.

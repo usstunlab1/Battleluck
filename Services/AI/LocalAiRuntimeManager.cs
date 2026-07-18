@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Net.Http;
+using System.Text.Json;
+using BattleLuck.Models;
 
 namespace BattleLuck.Services.AI;
 

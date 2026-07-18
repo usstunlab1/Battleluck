@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System;
+
+/// <summary>
 /// Manages multi-round state for game modes that use best-of-N or fixed round counts.
 /// </summary>
 public sealed class RoundManager

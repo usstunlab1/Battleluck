@@ -1,6 +1,8 @@
-using BattleLuck.Commands;
-using BattleLuck.Services.AI;
 using HarmonyLib;
+using Unity.Collections;
+using Unity.Entities;
+using BattleLuck.Services.AI;
+using BattleLuck.Commands;
 
 namespace BattleLuck.Patches;
 

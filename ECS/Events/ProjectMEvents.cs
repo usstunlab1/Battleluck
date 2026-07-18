@@ -1,3 +1,7 @@
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+
 namespace BattleLuck.ECS.Events;
 // ─────────────────────────────────────────────────────────────────────────────
 // ProjectMEvents.cs — typed event surface emitted by ProjectMEventRouter.

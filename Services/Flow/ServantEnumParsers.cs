@@ -1,7 +1,8 @@
-using ServantCommand = BattleLuck.Models.ServantCommand;
-using ServantFaction = BattleLuck.Models.ServantFaction;
-using ServantFormation = BattleLuck.Models.ServantFormation;
+using BattleLuck.Models;
 using ServantType = BattleLuck.Models.ServantType;
+using ServantFaction = BattleLuck.Models.ServantFaction;
+using ServantCommand = BattleLuck.Models.ServantCommand;
+using ServantFormation = BattleLuck.Models.ServantFormation;
 
 namespace BattleLuck.Services.Flow
 {

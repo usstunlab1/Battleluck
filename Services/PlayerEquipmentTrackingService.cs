@@ -1,4 +1,5 @@
 using ProjectM.Shared;
+using Unity.Entities;
 
 namespace BattleLuck.Services;
 

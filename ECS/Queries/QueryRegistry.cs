@@ -1,3 +1,6 @@
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BattleLuck.ECS.Queries;
 
 /// <summary>

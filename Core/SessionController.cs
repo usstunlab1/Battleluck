@@ -1,6 +1,13 @@
-using BattleLuck.ECS.Actions.Components;
+using System.Collections.Generic;
+using System.Linq;
+using BattleLuck.Models;
+using BattleLuck.Services.Flow;
 using BattleLuck.Services.Modes;
+using BattleLuck.Services.Runtime;
+using BattleLuck.ECS.Actions.Components;
 using ProjectM.Shared;
+using Unity.Entities;
+using Unity.Mathematics;
 
 /// <summary>
 /// Central session manager with toggle-based enter/exit flow.
@@ -186,21 +193,7 @@ public sealed class SessionController
         if (_enteringPlayers.Contains(steamId))
             return OperationResult.Fail("You are already entering an active session.");
 
-        int zoneHash = 0;
-        try
-        {
-            zoneHash = _zoneDetection.GetPlayerZone(steamId);
-        }
-        catch (Exception ex)
-        {
-            BattleLuckLogger.ErrorWithContext("Zone detection failed during ToggleEnter.", new
-            {
-                SteamId = steamId,
-                ModeId = modeId ?? "(null)",
-                Exception = ex.Message
-            });
-            return OperationResult.Fail("Could not determine your zone. Please try again in a few seconds.");
-        }
+        int zoneHash = _zoneDetection.GetPlayerZone(steamId);
 
         // Player is outside any zone — need a mode name to know where to go
         if (zoneHash == 0)
@@ -227,27 +220,11 @@ public sealed class SessionController
             return OperationResult.Fail("This zone is not mapped to any game mode.");
 
         _readyPlayers.Add(steamId);
-        try
-        {
-            var result = ExecuteEnterFlow(steamId, playerCharacter, zoneHash, resolvedModeId);
-            if (!result.Success && !_enteredPlayers.Contains(steamId))
-                _readyPlayers.Remove(steamId);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            // Defensive gate: never let an unhandled exception disconnect the player.
+        var result = ExecuteEnterFlow(steamId, playerCharacter, zoneHash, resolvedModeId);
+        if (!result.Success && !_enteredPlayers.Contains(steamId))
             _readyPlayers.Remove(steamId);
-            _enteringPlayers.Remove(steamId);
-            BattleLuckLogger.ErrorWithContext("Unhandled exception in ExecuteEnterFlow.", new
-            {
-                SteamId = steamId,
-                ZoneHash = zoneHash,
-                ModeId = resolvedModeId,
-                Exception = ex.ToString()
-            });
-            return OperationResult.Fail("Enter failed due to a server error. Please try again or contact an admin.");
-        }
+
+        return result;
     }
 
     /// <summary>

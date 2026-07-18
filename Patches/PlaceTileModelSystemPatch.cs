@@ -1,5 +1,10 @@
 using HarmonyLib;
+using ProjectM;
 using ProjectM.CastleBuilding;
+using ProjectM.Network;
+using Stunlock.Core;
+using Unity.Collections;
+using Unity.Entities;
 
 /// <summary>
 /// Patches PlaceTileModelSystem only to veto castle heart placement while
