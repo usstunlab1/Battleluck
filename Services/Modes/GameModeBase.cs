@@ -22,5 +22,11 @@ public abstract class GameModeBase
 
     public virtual void OnPlayerDowned(GameModeContext context, ulong victimId, ulong killerId) { }
 
+    /// <summary>
+    /// Called after the managed participant registry reaches its configured
+    /// death limit. SessionController owns the limit and invokes this once.
+    /// </summary>
+    public virtual void OnPlayerEliminated(GameModeContext context, ulong victimId, ulong killerId) { }
+
     public virtual bool RecordEnemyKill(GameModeContext context, ulong killerId) => false;
 }

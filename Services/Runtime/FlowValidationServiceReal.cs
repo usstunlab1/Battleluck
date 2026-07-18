@@ -17,7 +17,7 @@ namespace BattleLuck.Services.Runtime
 
             try
             {
-                var config = new EventDefinitionLoader().LoadEffectiveConfig(modeId);
+                var config = ConfigLoader.Load(modeId);
                 var actions = FindFlowActions(config, flowName).ToList();
 
                 if (actions.Count == 0)

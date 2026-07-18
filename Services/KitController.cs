@@ -115,7 +115,10 @@ public static class KitController
              {
                  foreach (var item in kit.Items)
                  {
-                     TryGiveResolvedItem(playerCharacter, item.Prefab, item.Amount, "item");
+                     var granted = TryGiveResolvedItem(playerCharacter, item.Prefab, item.Amount, "item");
+                     if (!granted && item.Required)
+                         throw new InvalidOperationException(
+                             $"Required kit item '{item.Prefab}' could not be granted — snapshot will be restored.");
                  }
              });
 
@@ -317,10 +320,10 @@ public static class KitController
     static IEnumerable<string> GetCandidateFilters(string prefabName, string context)
     {
         var ctx = context.ToLowerInvariant();
-        if (ctx.Contains("chest")) return new[] { "Item_Armor_Chest", "Armor_Chest" };
-        if (ctx.Contains("legs")) return new[] { "Item_Armor_Legs", "Armor_Legs" };
-        if (ctx.Contains("gloves")) return new[] { "Item_Armor_Gloves", "Armor_Gloves" };
-        if (ctx.Contains("boots")) return new[] { "Item_Armor_Boots", "Armor_Boot", "Boots", "Feet", "Foot" };
+        if (ctx.Contains("chest")) return new[] { "Item_Chest_", "Item_Armor_Chest", "Armor_Chest" };
+        if (ctx.Contains("legs")) return new[] { "Item_Legs_", "Item_Armor_Legs", "Armor_Legs" };
+        if (ctx.Contains("gloves")) return new[] { "Item_Gloves_", "Item_Armor_Gloves", "Armor_Gloves" };
+        if (ctx.Contains("boots")) return new[] { "Item_Boots_", "Item_Armor_Boots", "Armor_Boot", "Boots", "Feet", "Foot" };
         if (ctx.Contains("cloak")) return new[] { "Item_Cloak", "Cloak" };
         if (ctx.Contains("headgear") || ctx.Contains("head")) return new[] { "Item_Headgear", "Headgear" };
         if (ctx.Contains("magicsource") || ctx.Contains("magic")) return new[] { "Item_MagicSource", "MagicSource" };
@@ -360,13 +363,14 @@ public static class KitController
     {
         var ctx = context.ToLowerInvariant();
         bool Contains(string value) => liveName.Contains(value, StringComparison.OrdinalIgnoreCase);
+        bool ContainsAny(params string[] values) => values.Any(v => liveName.Contains(v, StringComparison.OrdinalIgnoreCase));
 
-        if (ctx.Contains("chest")) return Contains("Armor_Chest");
-        if (ctx.Contains("legs")) return Contains("Armor_Legs");
-        if (ctx.Contains("gloves")) return Contains("Armor_Gloves");
-        if (ctx.Contains("boots")) return Contains("Armor_Boots");
-        if (ctx.Contains("cloak")) return Contains("Cloak");
-        if (ctx.Contains("headgear") || ctx.Contains("head")) return Contains("Headgear");
+        if (ctx.Contains("chest")) return ContainsAny("Chest_", "Armor_Chest");
+        if (ctx.Contains("legs")) return ContainsAny("Legs_", "Armor_Legs");
+        if (ctx.Contains("gloves")) return ContainsAny("Gloves_", "Armor_Gloves");
+        if (ctx.Contains("boots")) return ContainsAny("Boots_", "Armor_Boots");
+        if (ctx.Contains("cloak")) return ContainsAny("Cloak_", "Item_Cloak");
+        if (ctx.Contains("headgear") || ctx.Contains("head")) return ContainsAny("Headgear_", "Item_Headgear");
         if (ctx.Contains("magicsource") || ctx.Contains("magic"))
         {
             if (!Contains("MagicSource")) return false;
@@ -442,7 +446,10 @@ public static class KitController
             {
                 foreach (var item in kit.Items)
                 {
-                    TryGiveResolvedItem(playerCharacter, item.Prefab, item.Amount, "item");
+                    var granted = TryGiveResolvedItem(playerCharacter, item.Prefab, item.Amount, "item");
+                    if (!granted && item.Required)
+                        throw new InvalidOperationException(
+                            $"Required kit item '{item.Prefab}' could not be granted — additive reward aborted.");
                 }
             });
         });

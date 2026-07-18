@@ -1,21 +1,35 @@
 {
-  "all_actions": {
-    "Equipment": [
-      { "ItemId": "Item_Equip_Armor_T08_Chest", "Amount": 1 },
-      { "ItemId": "Item_Equip_Armor_T08_Legs", "Amount": 1 },
-      { "ItemId": "Item_Equip_Armor_T08_Gloves", "Amount": 1 },
-      { "ItemId": "Item_Equip_Armor_T08_Boots", "Amount": 1 }
-    ],
-    "Inventory": [
-      { "ItemId": "Item_Weapon_Scythe_T08_Rare", "Amount": 1 },
-      { "ItemId": "Item_Weapon_Sword_T08_Rare", "Amount": 1 },
-      { "ItemId": "Item_Weapon_Slashers_T08_Rare", "Amount": 1 },
-      { "ItemId": "Item_Consumable_Potion_Health_T03", "Amount": 10 }
-    ],
-    "Abilities": [
-      { "Slot": 5, "ItemId": "Ability_Warrior_Counter" },
-      { "Slot": 6, "ItemId": "Ability_Warrior_Charge" },
-      { "Slot": 7, "ItemId": "Ability_Warrior_Ultimate" }
-    ]
-  }
+  "settings": {
+    "healOnApply": true,
+    "clearInventoryFirst": true
+  },
+  "blood": {
+    "type": "Warrior",
+    "quality": 100.0,
+    "value": 100.0
+  },
+  "armors": {
+    "chest": "Item_Chest_T08_DarkSilver_Warrior",
+    "legs": "Item_Legs_T08_DarkSilver_Warrior",
+    "gloves": "Item_Gloves_T08_DarkSilver_Warrior",
+    "boots": "Item_Boots_T08_DarkSilver_Warrior",
+    "magicSource": "Item_MagicSource_General_T08_Chaos"
+  },
+  "weapons": [
+    {
+      "prefab": "Item_Weapon_Sword_T08_Sanguine",
+      "amount": 1
+    },
+    {
+      "prefab": "Item_Weapon_Slashers_T08_Sanguine",
+      "amount": 1
+    },
+    {
+      "prefab": "Item_Weapon_Reaper_T08_Sanguine",
+      "amount": 1
+    }
+  ],
+  "items": [],
+  "abilities": {},
+  "passiveSpells": []
 }

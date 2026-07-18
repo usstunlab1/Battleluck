@@ -158,6 +158,33 @@ public sealed class EventRuntimeController
         _sessions.Remove(sessionId);
     }
 
+    /// <summary>
+    /// Removes a runtime that never committed successfully. Unlike
+    /// <see cref="EndSession"/>, this does not execute ending or cleanup
+    /// gameplay phases, because a failed first entry has no valid participant
+    /// context for those actions.
+    /// </summary>
+    public void AbortSession(string sessionId)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var runtime))
+            return;
+
+        foreach (var obj in runtime.Definition.Objects.Where(o => o.MapVisible))
+            BattleLuckPlugin.ZoneMap?.ClearSchematicMarkers(MapMarkerGroup(runtime, obj));
+
+        var destroyed = _spawned.ClearSession(sessionId);
+        if (destroyed > 0)
+            BattleLuckPlugin.LogInfo($"[EventRuntime] Destroyed {destroyed} tracked event entities while aborting {sessionId}.");
+
+        _sessions.Remove(sessionId);
+    }
+
+    public void AbortAll()
+    {
+        foreach (var sessionId in _sessions.Keys.ToList())
+            AbortSession(sessionId);
+    }
+
     public void RunEndingPhases(string sessionId)
     {
         if (!_sessions.TryGetValue(sessionId, out var runtime) || runtime.EndPhasesExecuted)

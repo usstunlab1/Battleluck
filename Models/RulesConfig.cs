@@ -12,6 +12,9 @@
 /// </summary>
 public sealed class RulesConfig
 {
+    /// <summary>
+    /// Event definition identifier. Historically named ModeId.
+    /// </summary>
     [JsonPropertyName("modeId")]
     public string ModeId { get; set; } = "";
 

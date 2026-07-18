@@ -20,6 +20,9 @@ public sealed class PlayerSnapshot
     /// <summary>Mode id associated with EventRunId; empty for non-event snapshots.</summary>
     public string EventModeId { get; set; } = "";
 
+    /// <summary>Native team value captured before an event temporarily reassigns the player.</summary>
+    public int TeamValue { get; set; }
+
     public Vec3Snapshot Position { get; set; } = new();
     public HealthSnapshot Health { get; set; } = new();
     public EnergySnapshot Energy { get; set; } = new();

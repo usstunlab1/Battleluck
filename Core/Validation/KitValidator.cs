@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using BattleLuck.Utilities;
 
 namespace BattleLuck.Core.Validation;
@@ -52,6 +53,13 @@ public static class KitValidator
         if (int.TryParse(value, out var guidHash))
             return guidHash != 0;
 
-        return PrefabHelper.TryGetPrefabGuid(value, out _);
+        return ValidateNamedPrefabReference(value);
     }
+
+    // Keep the Stunlock.Core-dependent resolver out of the fast path so
+    // offline config validation can still reject empty/zero references and
+    // accept numeric GUIDs without loading the dedicated-server assemblies.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static bool ValidateNamedPrefabReference(string value) =>
+        PrefabHelper.TryGetPrefabGuid(value, out _);
 }

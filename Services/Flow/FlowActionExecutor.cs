@@ -3286,6 +3286,9 @@ void RemoveBorderEffects(WallBoundaryConfig cfg, FlowActionContext c)
     static int Int(Dictionary<string, string> p, string key, int fallback) =>
         p.TryGetValue(key, out var value) && int.TryParse(value, out var parsed) ? parsed : fallback;
 
+    static ulong ULong(Dictionary<string, string> p, string key, ulong fallback) =>
+        p.TryGetValue(key, out var value) && ulong.TryParse(value, out var parsed) ? parsed : fallback;
+
     static int? OptionalTeamId(Dictionary<string, string> p)
     {
         var raw = Text(p, "teamId", Text(p, "team", ""));

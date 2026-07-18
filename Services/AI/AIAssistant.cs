@@ -41,6 +41,8 @@ namespace BattleLuck.Core
         private readonly List<string> _disabledProviders = new();
         private string _activeProvider = "none";
         private string _providerStatus = "not initialized";
+        private bool _initializing;
+        private bool _eventsSubscribed;
         
         public bool IsEnabled { get; private set; }
         public bool IsSidecarConfigured => _sidecarService?.IsEnabled == true;
@@ -83,6 +85,10 @@ namespace BattleLuck.Core
 
         public void Initialize(AIConfig config)
         {
+            if (IsEnabled || _initializing)
+                return;
+
+            _initializing = true;
             try
             {
                 _config = config;
@@ -230,7 +236,8 @@ namespace BattleLuck.Core
                 try
                 {
                     _runtimeServices.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-                    BattleLuckLogger.Info("[Runtime] Service bootstrap initialized");
+                    if (!_runtimeServices.IsInitialized)
+                        BattleLuckLogger.Warning($"Runtime services initialization warning: {_runtimeServices.LastError ?? "unknown error"}");
                 }
                 catch (Exception ex)
                 {
@@ -275,6 +282,10 @@ namespace BattleLuck.Core
                 BattleLuckLogger.Critical($"Failed to initialize AI Assistant: {ex.Message}");
                 IsEnabled = false;
             }
+            finally
+            {
+                _initializing = false;
+            }
         }
 
         public void Initialize(string apiKey, string model = "gemini-pro")
@@ -303,6 +314,18 @@ namespace BattleLuck.Core
             _sidecarService = null;
             _mcpRuntime?.Dispose();
             _mcpRuntime = null;
+            if (_runtimeServices != null)
+            {
+                try
+                {
+                    _runtimeServices.ShutdownAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    BattleLuckLogger.Warning($"Runtime services shutdown warning: {ex.Message}");
+                }
+                _runtimeServices = null;
+            }
         }
 
         public void SetHologramService(AiHologramService? service)
@@ -350,8 +373,8 @@ namespace BattleLuck.Core
                 if (string.IsNullOrWhiteSpace(response))
                 {
                     BattleLuckLogger.Warning("All configured AI text providers failed; using BattleLuck local fallback response.");
+                    _providerStatus = BuildProviderStatus(DescribeTextProviderFailure());
                     response = BuildLocalFallbackResponse(query);
-                    _providerStatus = BuildProviderStatus("All configured text providers failed; local fallback used.");
                 }
                 else if (IsProviderScopeRefusal(response))
                 {
@@ -493,9 +516,9 @@ namespace BattleLuck.Core
             {
                 var provider = NormalizeProviderName(Provider);
                 if (IsLlamaProvider(provider))
-                    return $"Configured provider status: {ProviderStatus}. Disabled providers: {disabled}. Start local llama-server at the configured llama_api.base_url, then run `.ai.reload` and `.aistatus`.";
+                    return $"{BuildProviderUnavailableNotice()} Provider status: {ProviderStatus}. Start local llama-server at the configured llama_api.base_url, then run `.ai.reload` and `.aistatus`.";
 
-                return $"Configured provider status: {ProviderStatus}. Disabled providers: {disabled}. Check the configured provider credentials/model, then run `.ai.reload` and `.aistatus`.";
+                return $"{BuildProviderUnavailableNotice()} Provider status: {ProviderStatus}. Disabled providers: {disabled}. Check the configured provider credentials/model, then run `.ai.reload` and `.aistatus`.";
             }
 
             if (lower.Contains("swapteam") || lower.Contains("swap team") || lower.Contains("swap teams") ||
@@ -510,7 +533,7 @@ namespace BattleLuck.Core
                 return "Use `.ai.sequence.gather <name> <text>` to pull matching actions from actions_catalog.json, or `.ai.sequence.create <name> <action; wait:5; tick:30; action>` for exact steps. Use `.ai.sequence.show <name>` to inspect it, and use `sequence.custom.play:sequenceId=<name>|schedule=true` from event phases, timers, or triggers.";
 
             if (lower.Contains("event") || lower.Contains("boss") || lower.Contains("wall") || lower.Contains("zone") || lower.Contains("glow") || lower.Contains("action"))
-                return $"For a new event, an admin can run `.ai create <eventId> [templateId]` (Bloodbath by default). For AI edits, use `.ai event request <what you want>`, then `.ai event preview <id>` and `.ai event approve <id>`. Catalog hints: {matches}";
+                return $"{BuildProviderUnavailableNotice()} Run deterministic server commands directly; the static response cannot perform this request. Catalog hints: {matches}";
 
             if (lower.Contains("config") || lower.Contains("json") || lower.Contains("admin"))
                 return "Admin-safe flow: `.aistatus`, `.ai catalog search <text>`, `.ai event request <modeId?> <change>`, preview, approve, rollback if needed. Direct config writes stay approval-only.";
@@ -518,7 +541,20 @@ namespace BattleLuck.Core
             if (lower.Contains("command") || lower.Contains("help"))
                 return $"Useful commands: `.aistatus`, `.bstatus`, `.ai catalog search <text>`, `.ai event request <request>`, `.schematic.capture <name> [radius]`, `.reload`. Catalog hints: {matches}";
 
-            return $"Local AI fallback is running. I can help with commands, catalog lookup, and safe next steps; full JSON generation needs a healthy LLM provider. Catalog hints: {matches}";
+            return $"{BuildProviderUnavailableNotice()} I can still provide catalog hints and safe next steps: {matches}";
+        }
+
+        string BuildProviderUnavailableNotice()
+        {
+            var llamaError = _llamaAiService?.LastError ?? "";
+            if (llamaError.Contains("CUDA", StringComparison.OrdinalIgnoreCase) ||
+                llamaError.Contains("unsupported toolchain", StringComparison.OrdinalIgnoreCase) ||
+                llamaError.Contains("PTX", StringComparison.OrdinalIgnoreCase))
+            {
+                return "AI provider unavailable: Ollama CUDA runtime is incompatible with the installed NVIDIA driver. Static fallback cannot execute commands or generate event changes.";
+            }
+
+            return "AI provider unavailable. Static fallback cannot execute commands or generate event changes.";
         }
 
         private static string SearchCatalogLine(string query)
@@ -858,8 +894,17 @@ This response is a proposal payload. It does not itself authorize or confirm a l
         {
             try
             {
+                if (!BattleLuckPlugin.IsDiscordBridgeEnabled)
+                    return;
+
                 var webhookUrl = _config?.Messaging?.DiscordWebhookUrl;
-                if (string.IsNullOrWhiteSpace(webhookUrl)) return;
+                if (string.IsNullOrWhiteSpace(webhookUrl) ||
+                    !Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
+                    (webhookUri.Scheme != Uri.UriSchemeHttp && webhookUri.Scheme != Uri.UriSchemeHttps) ||
+                    string.IsNullOrWhiteSpace(webhookUri.Host))
+                {
+                    return;
+                }
 
                 var payload = new
                 {
@@ -882,7 +927,7 @@ This response is a proposal payload. It does not itself authorize or confirm a l
 
                 var json = JsonSerializer.Serialize(payload);
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var result = await _webhookHttp.PostAsync(webhookUrl, content);
+                var result = await _webhookHttp.PostAsync(webhookUri, content);
                 if (!result.IsSuccessStatusCode)
                     BattleLuckLogger.Warning($"[AI→Discord] Webhook returned {result.StatusCode}");
             }
@@ -989,6 +1034,9 @@ This response is a proposal payload. It does not itself authorize or confirm a l
 
         private void SubscribeToEvents()
         {
+            if (_eventsSubscribed)
+                return;
+
             GameEvents.OnPlayerScored += OnPlayerScored;
             GameEvents.OnPlayerEliminated += OnPlayerEliminated;
             GameEvents.OnModeStarted += OnModeStarted;
@@ -997,10 +1045,14 @@ This response is a proposal payload. It does not itself authorize or confirm a l
             GameEvents.OnWaveStarted += OnWaveStarted;
             GameEvents.OnWaveCleared += OnWaveCleared;
             GameEvents.OnZoneEnter += OnZoneEnter;
+            _eventsSubscribed = true;
         }
 
         private void UnsubscribeFromEvents()
         {
+            if (!_eventsSubscribed)
+                return;
+
             GameEvents.OnPlayerScored -= OnPlayerScored;
             GameEvents.OnPlayerEliminated -= OnPlayerEliminated;
             GameEvents.OnModeStarted -= OnModeStarted;
@@ -1009,6 +1061,7 @@ This response is a proposal payload. It does not itself authorize or confirm a l
             GameEvents.OnWaveStarted -= OnWaveStarted;
             GameEvents.OnWaveCleared -= OnWaveCleared;
             GameEvents.OnZoneEnter -= OnZoneEnter;
+            _eventsSubscribed = false;
         }
 
         private void OnPlayerScored(PlayerScoredEvent e)
@@ -1492,6 +1545,18 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
             if (!string.IsNullOrWhiteSpace(lastError))
                 status += $"; lastError={TrimForStatus(lastError)}";
             return status;
+        }
+
+        string DescribeTextProviderFailure()
+        {
+            if (!string.IsNullOrWhiteSpace(_llamaAiService?.LastError))
+                return $"Llama failed: {_llamaAiService.LastError}";
+            if (!string.IsNullOrWhiteSpace(_cloudflareAiService?.LastError))
+                return $"Cloudflare AI failed: {_cloudflareAiService.LastError}";
+            if (!string.IsNullOrWhiteSpace(_googleAiService?.LastError))
+                return $"Google AI failed: {_googleAiService.LastError}";
+
+            return "All configured text providers failed; local static fallback used.";
         }
 
         static string TrimForStatus(string value) =>

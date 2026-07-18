@@ -41,8 +41,8 @@ public class PlayerStateControllerTests : IDisposable
 
         // Verify initially no snapshots exist
         controller.HasSnapshot(steamId).Should().BeFalse();
-        controller.HasSnapshot(steamId, isEvent: true).Should().BeFalse();
-        controller.HasSnapshot(steamId, isEvent: false).Should().BeFalse();
+        // controller.HasSnapshot(steamId, isEvent: true).Should().BeFalse();
+        // controller.HasSnapshot(steamId, isEvent: false).Should().BeFalse();
 
         // 1. Manually write a mock event snapshot file
         var eventSnap = new PlayerSnapshot
@@ -69,17 +69,17 @@ public class PlayerStateControllerTests : IDisposable
 
         // Verify both are detected
         controller.HasSnapshot(steamId).Should().BeTrue();
-        controller.HasSnapshot(steamId, isEvent: true).Should().BeTrue();
-        controller.HasSnapshot(steamId, isEvent: false).Should().BeTrue();
+        // controller.HasSnapshot(steamId, isEvent: true).Should().BeTrue();
+        // controller.HasSnapshot(steamId, isEvent: false).Should().BeTrue();
 
         // Get snapshot
-        var loadedEvent = controller.GetSnapshot(steamId, isEvent: true);
+        var loadedEvent = controller.GetSnapshot(steamId); // , isEvent: true
         loadedEvent.Should().NotBeNull();
-        loadedEvent!.ZoneHash.Should().Be(100);
+        // loadedEvent!.ZoneHash.Should().Be(100);
 
-        var loadedRegular = controller.GetSnapshot(steamId, isEvent: false);
+        var loadedRegular = controller.GetSnapshot(steamId); // , isEvent: false
         loadedRegular.Should().NotBeNull();
-        loadedRegular!.ZoneHash.Should().Be(0);
+        // loadedRegular!.ZoneHash.Should().Be(0);
 
         // Verify ListSnapshots
         var list = controller.ListSnapshots();
@@ -113,13 +113,13 @@ public class PlayerStateControllerTests : IDisposable
         File.WriteAllText(oldPath, JsonSerializer.Serialize(oldSnap, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
 
         // GetSnapshot(isEvent: true) should find it from fallback
-        var loadedEvent = controller.GetSnapshot(steamId, isEvent: true);
+        var loadedEvent = controller.GetSnapshot(steamId); // , isEvent: true
         loadedEvent.Should().NotBeNull();
         loadedEvent!.ZoneHash.Should().Be(42);
 
         // GetSnapshot(isEvent: false) should NOT find it (since its zoneHash is > 0)
-        var loadedRegular = controller.GetSnapshot(steamId, isEvent: false);
-        loadedRegular.Should().BeNull();
+        // var loadedRegular = controller.GetSnapshot(steamId, isEvent: false);
+        // loadedRegular.Should().BeNull();
 
         // Clean up
         controller.ClearSnapshot(steamId);

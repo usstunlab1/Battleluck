@@ -58,6 +58,7 @@ public static class ConfigLoader
         var aiConfigPath = Path.Combine(ConfigRoot, "ai_config.json");
         var config = LoadJson<AIConfig>(aiConfigPath) ?? new AIConfig();
         ApplyEnvOverrides(config);
+        PluginSettings.ApplyAIOverrides(config);
         _aiConfig = config;
         return config;
     }
@@ -69,7 +70,7 @@ public static class ConfigLoader
         if (IsUsableConfigValue(cloudflareToken))
             config.CloudflareAI.ApiToken = cloudflareToken!;
         else if (!string.IsNullOrWhiteSpace(cloudflareToken))
-            BattleLuckPlugin.Log?.LogWarning("[ConfigLoader] Ignoring placeholder CLOUDFLARE_AI_API_TOKEN.");
+            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder CLOUDFLARE_AI_API_TOKEN.");
         var cloudflareAccountId = Env.Get("CLOUDFLARE_AI_ACCOUNT_ID");
         if (IsUsableConfigValue(cloudflareAccountId))
             config.CloudflareAI.AccountId = cloudflareAccountId!;
@@ -86,7 +87,7 @@ public static class ConfigLoader
         if (IsUsableConfigValue(llamaKey))
             config.LlamaAPI.ApiKey = llamaKey!;
         else if (!string.IsNullOrWhiteSpace(llamaKey))
-            BattleLuckPlugin.Log?.LogWarning("[ConfigLoader] Ignoring placeholder Llama API key.");
+            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder Llama API key.");
         var llamaModel = FirstEnv("LLAMA_API_MODEL", "META_LLAMA_MODEL");
         if (IsUsableConfigValue(llamaModel))
             config.LlamaAPI.Model = llamaModel!;
@@ -100,7 +101,7 @@ public static class ConfigLoader
         if (IsUsableConfigValue(googleKey))
             config.GoogleAIStudio.ApiKey = googleKey!;
         else if (!string.IsNullOrWhiteSpace(googleKey))
-            BattleLuckPlugin.Log?.LogWarning("[ConfigLoader] Ignoring placeholder Google AI API key.");
+            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder Google AI API key.");
         var googleModel = Env.Get("GOOGLE_AI_MODEL");
         if (IsUsableConfigValue(googleModel))
             config.GoogleAIStudio.Model = googleModel!;
@@ -113,10 +114,12 @@ public static class ConfigLoader
         var webhook = Env.Get("MESSAGING_DISCORD_WEBHOOK_URL");
         if (!string.IsNullOrWhiteSpace(webhook))
         {
-            if (Uri.TryCreate(webhook, UriKind.Absolute, out _))
-                config.Messaging.DiscordWebhookUrl = webhook;
+            if (Uri.TryCreate(webhook, UriKind.Absolute, out var webhookUri) &&
+                (webhookUri.Scheme == Uri.UriSchemeHttp || webhookUri.Scheme == Uri.UriSchemeHttps) &&
+                !string.IsNullOrWhiteSpace(webhookUri.Host))
+                config.Messaging.DiscordWebhookUrl = webhookUri.AbsoluteUri;
             else
-                BattleLuckPlugin.Log?.LogWarning($"[ConfigLoader] Ignoring invalid MESSAGING_DISCORD_WEBHOOK_URL: not a valid absolute URI.");
+                BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring invalid MESSAGING_DISCORD_WEBHOOK_URL: not a valid absolute URI.");
         }
     }
 
@@ -124,7 +127,7 @@ public static class ConfigLoader
     {
         EnsureDefaultsDeployed();
         var path = Path.Combine(ConfigRoot, "discord_bridge.json");
-        return LoadJson<DiscordBridgeConfig>(path);
+        return LoadJson<DiscordBridgeConfig>(path, optional: true);
     }
 
     public static WebhookConfig? LoadWebhookConfig()
@@ -210,7 +213,7 @@ public static class ConfigLoader
         }
         catch (Exception ex)
         {
-            BattleLuckPlugin.LogWarning($"[ConfigLoader] Failed to load tech_catalog.json: {ex.Message}");
+            BattleLuckPlugin.LogInfo($"[ConfigLoader] Failed to load tech_catalog.json: {ex.Message}");
         }
         return new TechCatalog();
     }
@@ -228,7 +231,7 @@ public static class ConfigLoader
             return _actionConfig;
         EnsureDefaultsDeployed();
         var actionConfigPath = Path.Combine(ConfigRoot, "action_config.json");
-        _actionConfig = LoadJson<ActionConfig>(actionConfigPath) ?? new ActionConfig();
+        _actionConfig = LoadJson<ActionConfig>(actionConfigPath, optional: true) ?? new ActionConfig();
         return _actionConfig;
     }
 
@@ -257,7 +260,7 @@ public static class ConfigLoader
         if (_cache.TryGetValue(modeId, out var cached))
             return cached;
 
-        var config = new EventDefinitionLoader().LoadEffectiveConfig(modeId);
+        var config = BattleLuck.Core.Loaders.ModeConfigLoader.Load(modeId);
         config.Border = null;
         _cache[modeId] = config;
         return config;
@@ -383,7 +386,7 @@ public static class ConfigLoader
         if (!File.Exists(path))
         {
             if (!optional)
-                BattleLuckPlugin.LogWarning($"[ConfigLoader] Missing config: {path}");
+                BattleLuckPlugin.LogInfo($"[ConfigLoader] Missing config: {path}");
             return null;
         }
         try
@@ -449,8 +452,13 @@ public sealed class ZonesConfig
 
 public sealed class DetectionConfig
 {
+    /// <summary>
+    /// Default interval value for demonstration.
+    /// </summary>
+    public const int CHECK_INTERVAL_DEFAULT = 500;
+
     [JsonPropertyName("checkIntervalMs")]
-    public int CheckIntervalMs { get; set; } = 500;
+    public int CheckIntervalMs { get; set; } = CHECK_INTERVAL_DEFAULT;
     [JsonPropertyName("positionThreshold")]
     public float PositionThreshold { get; set; } = 1.0f;
 }

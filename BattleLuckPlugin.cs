@@ -9,6 +9,7 @@ using BattleLuck.Models;
 using BattleLuck.Utilities;
 using BattleLuck.ECS.Queries;
 using BattleLuck.Services;
+using BattleLuck.Services.Castles;
 using BattleLuck.Services.Runtime;
 using BattleLuck.Services.Flow;
 using BattleLuck.Services.AI;
@@ -46,6 +47,13 @@ public class BattleLuckPlugin : BasePlugin
     public static MerchantCommandService? MerchantCommands { get => Core.MerchantCommands; private set => Core.MerchantCommands = value; }
     public static ClanTaskService? ClanTasks { get => Core.ClanTasks; private set => Core.ClanTasks = value; }
     public static RoadmapService? Roadmap { get => Core.Roadmap; private set => Core.Roadmap = value; }
+    public static CastlePolicyService? CastlePolicy { get => Core.CastlePolicy; private set => Core.CastlePolicy = value; }
+    // ── Wave 1: New expansion services ──────────────────────────────────────────
+    public static Companion.CompanionService? Companion { get => Core.Companion; private set => Core.Companion = value; }
+    public static Encounter.EncounterService? Encounters { get => Core.Encounters; private set => Core.Encounters = value; }
+    public static Boss.BossScalingService? BossScaling { get => Core.BossScaling; private set => Core.BossScaling = value; }
+    public static Portal.PortalService? Portals { get => Core.Portals; private set => Core.Portals = value; }
+    public static Creature.CreatureCaptureService? CreatureCapture { get => Core.CreatureCapture; private set => Core.CreatureCapture = value; }
     static DiscordBridgeController? _discordBridge;
     static AiLoggerController? _aiLogger;
     static WebhookController? _webhookController;
@@ -57,11 +65,12 @@ public class BattleLuckPlugin : BasePlugin
     static Harmony? _harmony;
     public static Harmony? HarmonyInstance => _harmony;
     static readonly object _initLock = new();
+    static bool _coreInitializationInProgress;
     static EntityQuery? _playerQuery;
     static AiHologramService? _hologramService;
     static LocalAiRuntimeManager? _localAiRuntime;
     public static bool IsInitialized => Core.IsInitialized;
-    public static bool IsDiscordBridgeEnabled => _discordBridge != null;
+    public static bool IsDiscordBridgeEnabled => _discordBridge?.IsRunning == true;
 
     public static void SetAIAssistant(AIAssistant? assistant)
     {
@@ -138,15 +147,19 @@ public class BattleLuckPlugin : BasePlugin
     {
         Log = base.Log;
         Log.LogInfo("[BattleLuck] Loading...");
+        PluginSettings.Initialize(Config);
         ConfigLoader.EnsureDefaultsDeployed();
         ModeConfigLoader.EnsureWatcher();
         SchematicLoader.LoadAll();
 
-        GameModes = new GameModeRegistry();
-        RegisterConfiguredModes(GameModes);
+        var gameModes = new GameModeRegistry();
+        GameModes = gameModes;
+        RegisterConfiguredModes(gameModes);
 
-        // Initialize the ProjectM event router (Phase 1: listener-only)
-        ProjectMEventRouter.Initialize();
+        // Initialize the typed router and bridge death events to legacy
+        // DeathHook subscribers. The router owns the sole death-system postfix.
+        var projectMEventRouter = ProjectMEventRouter.Initialize();
+        DeathHook.Initialize(projectMEventRouter);
 
         // Apply Harmony patches for death detection and event routing
         _harmony = new Harmony("gg.battleluck.patches");
@@ -157,49 +170,66 @@ public class BattleLuckPlugin : BasePlugin
         // referenced type in the assembly metadata), fall back to patching the
         // critical classes individually so essential hooks still apply.
         var assembly = typeof(DeathHook).Assembly;
-        try
-        {
-            _harmony?.PatchAll(assembly);
-            Log?.LogInfo("[BattleLuck] Harmony PatchAll completed successfully.");
-        }
-        catch (Exception patchAllEx)
-        {
-            Log?.LogWarning($"[BattleLuck] Harmony PatchAll failed: {patchAllEx.Message}. Falling back to individual class patching...");
-
-            // Fallback: patch critical classes individually so a missing type
-            // in one class doesn't prevent the others from being applied.
-            var criticalPatches = new[]
+            try
             {
-                typeof(ServerTickHook),
-                typeof(BattleLuck.Patches.ChatMessageSystemPatch),
-                typeof(DeathHook),
-                typeof(BattleLuckMapVisibilityPatches),
-                typeof(InitializationPatch),
-                typeof(PlaceTileModelSystemPatch),
-                typeof(UnitSpawnerPatch),
-                typeof(BattleLuckInventoryEquipmentPatches),
-                typeof(ProjectMEventRouterPatches),
-                typeof(BattleLuck.Patches.AiTickSequencePatches)
-            };
-
-            foreach (var patchType in criticalPatches)
+                _harmony?.PatchAll(assembly);
+                Log?.LogInfo("[BattleLuck] Harmony PatchAll completed successfully.");
+            }
+            catch (Exception patchAllEx)
             {
+                // HarmonyX may throw a message containing "Could not find method" when it fails.
+                // Log it as a warning but proceed to fallback.
+                Log?.LogWarning($"[BattleLuck] Harmony PatchAll encountered issues: {patchAllEx.Message}");
+                Log?.LogInfo("[BattleLuck] Falling back to individual class patching...");
+
+                // PatchAll may install several classes before a later target
+                // fails. Clear only this plugin's Harmony owner before applying
+                // the fallback set so successful partial patches do not run twice.
+                var fallbackCanProceed = true;
                 try
                 {
-                    _harmony?.CreateClassProcessor(patchType)?.Patch();
-                    Log?.LogInfo($"[BattleLuck] Applied patch class: {patchType.Name}");
+                    _harmony?.UnpatchSelf();
                 }
-                catch (Exception classEx)
+                catch (Exception unpatchEx)
                 {
-                    Log?.LogWarning($"[BattleLuck] Failed to patch class '{patchType.Name}': {classEx.Message}. Continuing...");
+                    fallbackCanProceed = false;
+                    Log?.LogError($"[BattleLuck] Could not clear partial Harmony patches; fallback skipped to avoid duplicate hooks: {unpatchEx.Message}");
+                }
+
+                // Fallback: patch critical classes individually so a missing type
+                // in one class doesn't prevent the others from being applied.
+                var criticalPatches = new[]
+                {
+                    typeof(ServerTickHook),
+                    typeof(BattleLuck.Patches.ChatMessageSystemPatch),
+                    typeof(BattleLuckMapVisibilityPatches),
+                    typeof(InitializationPatch),
+                    typeof(PlaceTileModelSystemPatch),
+                    typeof(UnitSpawnerPatch),
+                    typeof(BattleLuckInventoryEquipmentPatches),
+                    typeof(ProjectMEventRouterPatches)
+                };
+
+                foreach (var patchType in fallbackCanProceed ? criticalPatches : Array.Empty<Type>())
+                {
+                    try
+                    {
+                        _harmony?.CreateClassProcessor(patchType)?.Patch();
+                        Log?.LogInfo($"[BattleLuck] Applied patch class: {patchType.Name}");
+                    }
+                    catch (Exception classEx)
+                    {
+                        // If it's the known failing method, log it as an info/debug message instead of a warning
+                        // if we want to be less noisy, but for now warning is fine as it's an actual failure.
+                        Log?.LogWarning($"[BattleLuck] Failed to patch class '{patchType.Name}': {classEx.Message}");
+                    }
                 }
             }
-        }
 
         BattleLuck.Commands.BattleLuckCommandDispatcher.EnsureScanned();
         CommandRegistry.RegisterAll(typeof(BattleLuckPlugin).Assembly);
 
-        Log.LogInfo($"[BattleLuck] Loaded - {GameModes.GetRegisteredModes().Count} game modes registered. Waiting for server world...");
+        Log?.LogInfo($"[BattleLuck] Loaded - {gameModes.GetRegisteredModes().Count} game modes registered. Waiting for server world...");
     }
 
     static void RegisterConfiguredModes(GameModeRegistry registry)
@@ -209,6 +239,12 @@ public class BattleLuckPlugin : BasePlugin
 
         foreach (var info in discovered)
         {
+            if (!PluginSettings.IsEventModeEnabled(info.ModeId))
+            {
+                Log?.LogInfo($"[BattleLuck] Event mode '{info.ModeId}' disabled by gg.battleluck.cfg.");
+                continue;
+            }
+
             ModeConfig config;
             GameModeEngine mode;
             try
@@ -246,7 +282,7 @@ public class BattleLuckPlugin : BasePlugin
             BattleLuckPlugin.LogInfo($"[BattleLuck] Created GameModeEngine for '{info.ModeId}' from declarative config.");
         }
 
-        if (registered > 0)
+        if (registered > 0 || !PluginSettings.EventsEnabled)
             return;
 
         // Fallback: register default modes using GameModeEngine if no declarative config exists
@@ -438,6 +474,15 @@ public class BattleLuckPlugin : BasePlugin
                 Log?.LogWarning($"[BattleLuck] Tick error in ClanTasks.Tick: {ex.Message}");
             }
 
+            try
+            {
+                CastlePolicy?.Tick(deltaSeconds);
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning($"[BattleLuck] Tick error in CastlePolicy.Tick: {ex.Message}");
+            }
+
             // Do not auto-create castle hearts during event ticks. Real castle
             // tile paths may attach to an existing admin castle, but event entry
             // must never queue a CastleHeart BuildTileModelEvent.
@@ -454,6 +499,10 @@ public class BattleLuckPlugin : BasePlugin
         {
             if (Core.IsInitialized)
                 return true;
+            if (_coreInitializationInProgress)
+                return false;
+
+            _coreInitializationInProgress = true;
 
             try
             {
@@ -471,11 +520,11 @@ public class BattleLuckPlugin : BasePlugin
                 Progression = new PlayerProgressionService();
                 Teleports = new TeleportService();
                 DeathPrevention = new DeathPreventionService();
-                GameEvents.OnPlayerLeft += evt => DeathPrevention?.Disarm(evt.SteamId);
-                GameEvents.OnModeEnded += _ => DeathPrevention?.Clear();
+                GameEvents.OnPlayerLeft += HandlePlayerLeftDeathPrevention;
+                GameEvents.OnModeEnded += HandleModeEndedDeathPrevention;
                 var flow = new FlowController(playerState, GameModes!);
                 var zoneDetection = new ZoneDetectionSystem();
-                zoneDetection.Initialize();
+                zoneDetection.Initialize(GameModes!);
 
                 Session = new SessionController(GameModes!, playerState, flow, zoneDetection);
                 Session.Initialize();
@@ -509,7 +558,23 @@ public class BattleLuckPlugin : BasePlugin
                 Log?.LogInfo("[BattleLuck] NPC control service initialized.");
 
                 // Despawn tracked event NPCs on mode end. Player entities are guarded inside the service.
-                GameEvents.OnModeEnded += evt => NpcService?.DespawnSession(evt.SessionId);
+                GameEvents.OnModeEnded += HandleModeEndedNpcDespawn;
+
+                // ── Wave 1: New expansion services ──────────────────────────────────────
+                Companion = new Companion.CompanionService(NpcService);
+                Log?.LogInfo("[BattleLuck] Companion service initialized.");
+
+                Encounters = new Encounter.EncounterService(NpcService);
+                Log?.LogInfo("[BattleLuck] Encounter service initialized.");
+
+                BossScaling = new Boss.BossScalingService();
+                Log?.LogInfo("[BattleLuck] Boss scaling service initialized.");
+
+                Portals = new Portal.PortalService();
+                Log?.LogInfo("[BattleLuck] Portal service initialized.");
+
+                CreatureCapture = new Creature.CreatureCaptureService(NpcService);
+                Log?.LogInfo("[BattleLuck] Creature capture service initialized.");
 
                 // Initialize the session cleanup service (destroys walls / floors / bosses / NPCs
                 // / platforms / items / projectiles / traps in the zone, and strips transient
@@ -526,15 +591,28 @@ public class BattleLuckPlugin : BasePlugin
                         _discordBridge = new DiscordBridgeController();
                         _discordBridge.Configure(discordConfig);
                         _discordBridge.Start();
-                        Log?.LogInfo($"[BattleLuck] Discord bridge enabled on port {discordConfig.Port}");
+                        if (_discordBridge.IsRunning)
+                        {
+                            Log?.LogInfo($"[BattleLuck] Discord bridge enabled on port {discordConfig.Port}");
+                        }
+                        else
+                        {
+                            _discordBridge.Dispose();
+                            _discordBridge = null;
+                            Log?.LogWarning("[BattleLuck] Discord bridge was configured but did not start; Discord forwarding is disabled.");
+                        }
                     }
                     else
                     {
+                        _discordBridge?.Dispose();
+                        _discordBridge = null;
                         Log?.LogInfo("[BattleLuck] Discord bridge disabled in configuration");
                     }
                 }
                 catch (Exception discordEx)
                 {
+                    _discordBridge?.Dispose();
+                    _discordBridge = null;
                     Log?.LogWarning($"[BattleLuck] Failed to initialize Discord bridge: {discordEx.Message}");
                 }
 
@@ -555,6 +633,8 @@ public class BattleLuckPlugin : BasePlugin
                 }
                 catch (Exception webhookEx)
                 {
+                    _webhookController?.Dispose();
+                    _webhookController = null;
                     Log?.LogWarning($"[BattleLuck] Failed to initialize webhook endpoint: {webhookEx.Message}");
                 }
 
@@ -564,7 +644,9 @@ public class BattleLuckPlugin : BasePlugin
                     var aiConfig = ConfigLoader.LoadAIConfig();
 
                     // Wire Discord webhook for full mod log forwarding
-                    BattleLuckLogger.SetDiscordWebhook(aiConfig.Messaging.DiscordWebhookUrl);
+                    BattleLuckLogger.SetDiscordWebhook(IsDiscordBridgeEnabled
+                        ? aiConfig.Messaging.DiscordWebhookUrl
+                        : null);
 
                     var provider = aiConfig.Provider.ToLowerInvariant();
 
@@ -585,7 +667,7 @@ public class BattleLuckPlugin : BasePlugin
                         AiGroupProjectMBridge.Initialize(ProjectMEventRouter.Instance);
 
                         var providerSummary = AIAssistant.ActiveProvider.Equals("local", StringComparison.OrdinalIgnoreCase)
-                            ? "Local AI fallback"
+                            ? "Static catalog fallback (cannot execute commands or generate event changes)"
                             : provider == "auto"
                                 ? $"Auto AI provider ({AIAssistant.ActiveProvider})"
                                 : provider == "llama" || provider == "llama_api" || provider == "meta_llama"
@@ -616,6 +698,13 @@ public class BattleLuckPlugin : BasePlugin
                 }
                 catch (Exception aiEx)
                 {
+                    try { AiGroupProjectMBridge?.Dispose(); } catch { }
+                    AiGroupProjectMBridge = null;
+                    try { AIAssistant?.Shutdown(); } catch { }
+                    AIAssistant = null;
+                    try { _localAiRuntime?.Dispose(); } catch { }
+                    _localAiRuntime = null;
+                    _hologramService = null;
                     Log?.LogWarning($"[BattleLuck] Failed to initialize AI Assistant: {aiEx.Message}");
                 }
 
@@ -632,6 +721,8 @@ public class BattleLuckPlugin : BasePlugin
                 }
                 catch (Exception loggerEx)
                 {
+                    _aiLogger?.Dispose();
+                    _aiLogger = null;
                     Log?.LogWarning($"[BattleLuck] Failed to initialize AI Logger: {loggerEx.Message}");
                 }
 
@@ -681,9 +772,84 @@ public class BattleLuckPlugin : BasePlugin
             catch (Exception ex)
             {
                 Log?.LogError($"[BattleLuck] TryInitializeCore failed: {ex}");
+                CleanupFailedCoreInitialization();
                 return false;
             }
+            finally
+            {
+                _coreInitializationInProgress = false;
+            }
         }
+    }
+
+    static void HandlePlayerLeftDeathPrevention(PlayerLeftEvent evt) => DeathPrevention?.Disarm(evt.SteamId);
+
+    static void HandleModeEndedDeathPrevention(ModeEndedEvent _) => DeathPrevention?.Clear();
+
+    static void HandleModeEndedNpcDespawn(ModeEndedEvent evt) => NpcService?.DespawnSession(evt.SessionId);
+
+    static void UnsubscribeCoreEvents()
+    {
+        GameEvents.OnPlayerLeft -= HandlePlayerLeftDeathPrevention;
+        GameEvents.OnModeEnded -= HandleModeEndedDeathPrevention;
+        GameEvents.OnModeEnded -= HandleModeEndedNpcDespawn;
+        GameEvents.OnModeEnded -= HandleModeEndedCleanup;
+        GameEvents.OnActionPerformed -= HandleActionVFX;
+    }
+
+    static void CleanupFailedCoreInitialization()
+    {
+        UnsubscribeCoreEvents();
+
+        try { Session?.Shutdown(); } catch { }
+        Session = null;
+
+        try { ZoneMap?.Shutdown(); } catch { }
+        ZoneMap = null;
+
+        try { EquipmentTracker?.RestoreAll(); } catch { }
+        EquipmentTracker = null;
+
+        try { _clanTaskGameAdapter?.Dispose(); } catch { }
+        _clanTaskGameAdapter = null;
+        try { ClanTasks?.Dispose(); } catch { }
+        ClanTasks = null;
+        try { Roadmap?.Dispose(); } catch { }
+        Roadmap = null;
+
+
+        try { NpcService?.DespawnAll(); } catch { }
+        NpcService = null;
+        try { DeathPrevention?.Dispose(); } catch { }
+        DeathPrevention = null;
+
+        try { AiGroupProjectMBridge?.Dispose(); } catch { }
+        AiGroupProjectMBridge = null;
+        try { AIAssistant?.Shutdown(); } catch { }
+        AIAssistant = null;
+        try { _localAiRuntime?.Dispose(); } catch { }
+        _localAiRuntime = null;
+        _hologramService = null;
+
+        try { _discordBridge?.Dispose(); } catch { }
+        _discordBridge = null;
+        try { _webhookController?.Dispose(); } catch { }
+        _webhookController = null;
+        try { _aiLogger?.Dispose(); } catch { }
+        _aiLogger = null;
+        BattleLuckLogger.SetDiscordWebhook(null);
+
+        PlayerLoadouts = null;
+        Progression = null;
+        Teleports = null;
+        MerchantCommands = null;
+        DevSession = null;
+        Cleanup = null;
+
+        try { QueryRegistry.Shutdown(); } catch { }
+        _playerQuery = null;
+        try { VRisingCore.Reset(); } catch { }
+        Core.IsInitialized = false;
     }
 
     public override bool Unload()
@@ -706,6 +872,8 @@ public class BattleLuckPlugin : BasePlugin
         ClanTasks = null;
         Roadmap?.Dispose();
         Roadmap = null;
+        CastlePolicy?.Dispose();
+        CastlePolicy = null;
         ZoneMap?.Shutdown();
         ZoneMap = null;
         AiGroupProjectMBridge?.Dispose();
@@ -716,11 +884,13 @@ public class BattleLuckPlugin : BasePlugin
         _localAiRuntime = null;
         _discordBridge?.Dispose();
         _discordBridge = null;
+        BattleLuckLogger.SetDiscordWebhook(null);
         _webhookController?.Dispose();
         _webhookController = null;
         _aiLogger?.Dispose();
         _aiLogger = null;
         Session?.Shutdown();
+        DeathHook.Shutdown();
 
         // Do not mutate unrelated world state during plugin unload. Individual
         // services above are responsible for removing entities they own.

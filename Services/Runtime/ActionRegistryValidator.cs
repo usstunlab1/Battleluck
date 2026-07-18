@@ -68,10 +68,7 @@ public static class ActionRegistryValidator
     /// </summary>
     public static IReadOnlyList<string> Validate(string modeId, ModeConfig config)
     {
-        var issues = new List<string>();
-        // Validation is done by FlowValidator now
-        // This method exists for compatibility
-        return issues;
+        return BattleLuck.Core.Validation.ActionRegistryValidator.Validate(modeId, config);
     }
 
     /// <summary>

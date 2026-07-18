@@ -34,7 +34,12 @@
       "pal.l": "palette.list",
       "pal.c": "palette.clear",
       "warevent_start": "mode.start",
-      "warevent_end": "mode.end"
+      "warevent_end": "mode.end",
+      "servant.follow": "companion.follow",
+      "pet.follow": "companion.follow",
+      "ai_vampire.follow": "companion.follow",
+      "servant.guard": "companion.guard",
+      "pet.guard": "companion.guard"
     },
     "rules": [
       "When generating new JSON/actions, prefer canonical action names unless the user explicitly asks for a legacy alias.",
@@ -47,10 +52,20 @@
       "Do not put teleport actions in event enter flows; SessionController teleports players after the logical preparation and warmup gates complete.",
       "No entrant may initialize live geometry. The first entrant initializes session state only; later players join that same logical session.",
       "Event entry snapshots and removes the old kit, equipment, passives, and ability overrides; event exit removes the event kit before restoring the original snapshot. Never place kit.apply or ability mutations after snapshot.restore.",
-      "livesPerPlayer is an in-arena respawn allowance: 3 means three immediate arena respawns, then elimination and personal rollback on the next death.",
+      "livesPerPlayer is the managed death limit: 3 means deaths 1 and 2 respawn in the arena, while death 3 eliminates and restores that player.",
       "Tech/progression mutations and entity.destroy are disabled inside events; do not propose or execute them.",
       "Before proposing or executing a live action, validate catalog registration, handler availability, mutation policy, count caps, and prompt policy. Omit or skip any rejected action.",
-      "Use merchant.run and merchant.grant for merchant item tokens that map a bought/acquired item prefab or item GUID to a numbered UUID listing in merchant_servant_actions.json."
+      "Use merchant.run and merchant.grant for merchant item tokens that map a bought/acquired item prefab or item GUID to a numbered UUID listing in merchant_servant_actions.json.",
+      "Companion actions (companion.*) reuse the NpcControlService pipeline. Do not create separate servant.follow, pet.follow, or ai_vampire.follow handlers.",
+      "Encounter actions (encounter.*) use the unified NPC/VBlood spawn pipeline with session tracking for cleanup.",
+      "Invasion actions (invasion.*) require a prepared session and scale with player count/gear level.",
+      "Dungeon actions (dungeon.*) create managed isolated zones within the existing world, not separate-server instances.",
+      "MOBA actions (lane.*, match.*) use event-local virtual currency by default. Do not generate permanent inventory money unless explicitly configured.",
+      "Boss scaling (boss.scale.*) captures a baseline before modification and can restore original stats.",
+      "Creature capture (creature.capture.*) never captures V Bloods, players, or quest-critical entities without explicit admin policy override.",
+      "Portal actions (portal.*) use the existing teleport API, not direct transform mutation.",
+      "Weather/time actions (world.*) affect the entire server and require admin approval. Never available to ordinary player AI requests.",
+      "Client-required actions (structure.fade.policy.set, equipment.appearance.set, ability.slot.policy.set) are labeled client_required and never claim success without visual replication."
     ]
   },
   "registered": [
@@ -255,7 +270,114 @@
     "boss.add_servant",
     "boss.remove_servant",
     "boss.command_servants",
-    "boss.spawn_servants"
+    "boss.spawn_servants",
+    "companion.assign",
+    "companion.follow",
+    "companion.guard",
+    "companion.dismiss",
+    "companion.despawn",
+    "companion.behavior.set",
+    "companion.limit.set",
+    "creature.capture.validate",
+    "creature.capture.apply",
+    "creature.capture.release",
+    "creature.blood.threshold.set",
+    "encounter.spawn",
+    "encounter.named_unit.spawn",
+    "encounter.random.select",
+    "encounter.wave.start",
+    "encounter.wave.stop",
+    "encounter.reward.grant",
+    "encounter.cleanup",
+    "invasion.prepare",
+    "invasion.start",
+    "invasion.scale",
+    "invasion.wave.spawn",
+    "invasion.target.set",
+    "invasion.end",
+    "invasion.cancel",
+    "portal.create",
+    "portal.enable",
+    "portal.disable",
+    "portal.teleport",
+    "portal.return.bind",
+    "portal.return.execute",
+    "dungeon.session.create",
+    "dungeon.layout.load",
+    "dungeon.room.activate",
+    "dungeon.boss.spawn",
+    "dungeon.complete",
+    "dungeon.abort",
+    "boss.spawn.policy.set",
+    "boss.spawn.suppress",
+    "boss.spawn.restore",
+    "boss.scale.apply",
+    "boss.scale.refresh",
+    "boss.scale.reset",
+    "boss.reward.eligibility.set",
+    "boss.unlock.policy.set",
+    "lane.define",
+    "lane.wave.spawn",
+    "lane.unit.advance",
+    "lane.tower.spawn",
+    "lane.tower.enable",
+    "lane.tower.disable",
+    "lane.structure.damage",
+    "match.currency.grant",
+    "match.currency.spend",
+    "match.upgrade.purchase",
+    "match.form.policy.set",
+    "match.recall",
+    "world.weather.set",
+    "world.weather.restore",
+    "world.time.advance",
+    "world.time.set",
+    "sunlight.damage.scale",
+    "sunlight.rule.set",
+    "player.revive.duration.set",
+    "player.revive.duration.reset",
+    "player.movement.modifier.apply",
+    "player.movement.modifier.remove",
+    "zone.movement.modifier.set",
+    "ability.cooldown.multiplier.apply",
+    "ability.cooldown.multiplier.reset",
+    "ability.loadout.capture",
+    "ability.loadout.apply",
+    "ability.loadout.bind_weapon",
+    "ability.loadout.unbind_weapon",
+    "ability.slot.policy.set",
+    "ability.swap.policy.set",
+    "equipment.template.create",
+    "equipment.template.validate",
+    "equipment.template.grant",
+    "equipment.appearance.set",
+    "equipment.appearance.reset",
+    "object.place",
+    "object.remove",
+    "object.variant.set",
+    "schematic.capture",
+    "structure.railing.remove",
+    "structure.fade.policy.set",
+    "servant.hunt.snapshot",
+    "servant.hunt.repeat",
+    "servant.hunt.assign",
+    "servant.hunt.cancel",
+    "servant.hunt.validate",
+    "item.durability.restore",
+    "item.durability.regeneration.set",
+    "item.durability.regeneration.remove",
+    "container.item.rule.set",
+    "crafting.mastery.progress.add",
+    "crafting.mastery.bonus.set",
+    "crafting.result.modify",
+    "mastery.perk.unlock",
+    "mastery.perk.reset",
+    "player.chat.mute",
+    "player.chat.unmute",
+    "player.afk.evaluate",
+    "player.afk.remove",
+    "siege.policy.set",
+    "castle.raidability.set"
   ],
   "examples": {
     "snapshot": [
@@ -370,6 +492,151 @@
       "npc.faction:npcId=arena_guard_1|factionPrefab=Faction_Militia",
       "npc.speed:npcId=arena_guard_1|speed=12",
       "npc.rename:npcId=arena_guard_1|name=Arena Guard"
+    ],
+    "companion": [
+      "companion.assign:entityId=npc_guard_1|ownerSteamId=76561198000000001|role=follow|persist=true",
+      "companion.assign:entityId=npc_guard_1|ownerSteamId=76561198000000001|role=guard|persist=false",
+      "companion.follow:entityId=npc_guard_1|targetSteamId=76561198000000001|distance=6|teleportCatchupDistance=80|combatEnabled=true",
+      "companion.guard:entityId=npc_guard_1|center=-2000,5,-2800|radius=20|aggroMode=aggressive|returnToCenter=true",
+      "companion.dismiss:entityId=npc_guard_1",
+      "companion.despawn:entityId=npc_guard_1",
+      "companion.behavior.set:entityId=npc_guard_1|behavior=follow|radius=6|combatEnabled=true",
+      "companion.behavior.set:entityId=npc_guard_1|behavior=guard|radius=20|combatEnabled=true",
+      "companion.behavior.set:entityId=npc_guard_1|behavior=patrol|radius=30|combatEnabled=false",
+      "companion.limit.set:scope=player|maximum=3|overflowPolicy=reject",
+      "companion.limit.set:scope=clan|maximum=10|overflowPolicy=dismiss_oldest"
+    ],
+    "creature_capture": [
+      "creature.capture.validate:targetEntity=npc_wolf_1|allowVBlood=false|maximumLevel=80",
+      "creature.capture.apply:targetEntity=npc_wolf_1|ownerSteamId=76561198000000001|convertToPrisoner=true|preserveBlood=true",
+      "creature.capture.release:targetEntity=npc_wolf_1",
+      "creature.blood.threshold.set:minimumQuality=50|maximumQuality=100|category=Creature"
+    ],
+    "encounter": [
+      "encounter.spawn:encounterId=road_ambush|sessionId=bloodbath_1|center=-2000,5,-2800|faction=Bandits|prefabs=CHAR_Bandit_Hunter,CHAR_Bandit_Thug|count=5|formation=wedge|despawnSeconds=300",
+      "encounter.named_unit.spawn:prefab=CHAR_Bandit_Leader_VBlood|displayName=Captain Blackwood|levelPolicy=scale_to_players|behavior=guard|rewardTable=bandit_captain",
+      "encounter.random.select:tableId=forest_encounters|seed=42|playerCount=4|averageGearLevel=60|zone=2002",
+      "encounter.wave.start:waveSetId=arena_waves|waveNumber=1|intervalSeconds=30|scaleByPlayers=true",
+      "encounter.wave.stop",
+      "encounter.reward.grant:rewardTableId=wave_rewards|recipients=participant|rolls=1",
+      "encounter.cleanup"
+    ],
+    "invasion": [
+      "invasion.prepare:invasionId=castle_raid_1|castleHeart=entity_123|faction=Militia|warningSeconds=60|durationSeconds=300|difficultyProfile=hard",
+      "invasion.start:invasionId=castle_raid_1|ownerSteamId=76561198000000001|castleHeart=entity_123|spawnPoints=-2000,5,-2800,-1990,5,-2790|waveSetId=invasion_waves",
+      "invasion.scale:invasionId=castle_raid_1|playerCount=4|averageGearLevel=70|highestVBloodDefeated=5|healthMultiplier=1.5|powerMultiplier=1.3",
+      "invasion.wave.spawn:invasionId=castle_raid_1|waveNumber=2|formation=line|entryMarker=gate|targetPolicy=castle_heart",
+      "invasion.target.set:target=castle_heart|structureDamageAllowed=false",
+      "invasion.end:result=victory|rewardTableId=invasion_rewards|cleanupDelay=30",
+      "invasion.cancel"
+    ],
+    "portal": [
+      "portal.create:portalId=gate_1|sourceMarker=-2000,5,-2800|destinationMarker=-1900,5,-2700|visualPrefab=Portal_Visual|interactionRadius=3|accessPolicy=all",
+      "portal.enable:portalId=gate_1",
+      "portal.disable:portalId=gate_1",
+      "portal.teleport:portalId=gate_1|steamId=76561198000000001|preserveVelocity=false|requireOutOfCombat=true",
+      "portal.return.bind:portalId=gate_1",
+      "portal.return.execute:portalId=gate_1"
+    ],
+    "dungeon": [
+      "dungeon.session.create:eventId=bloodbath|templateId=catacombs|zoneHash=2002|partyMembers=76561198000000001,76561198000000002|seed=12345|difficulty=normal",
+      "dungeon.layout.load:sessionId=dungeon_1|schematicId=catacombs_floor_1|rotation=0|trackingGroup=dungeon_1",
+      "dungeon.room.activate:sessionId=dungeon_1|roomId=room_1|encounterId=skeleton_ambush|lockExits=true",
+      "dungeon.boss.spawn:sessionId=dungeon_1|bossPrefab=CHAR_Undead_BishopOfShadows_VBlood|marker=boss_room|scalingProfile=party",
+      "dungeon.complete:sessionId=dungeon_1|result=victory|rewardTable=dungeon_rewards|returnPlayers=true",
+      "dungeon.abort:sessionId=dungeon_1"
+    ],
+    "boss_scaling": [
+      "boss.spawn.policy.set:scope=zone|enabled=false|durationSeconds=300|reason=Event active",
+      "boss.spawn.suppress:scope=prefab|prefab=CHAR_Winter_Yeti_VBlood",
+      "boss.spawn.restore:scope=global",
+      "boss.scale.apply:entityId=boss_1|playerCount=4|healthPerAdditionalPlayer=0.25|powerPerAdditionalPlayer=0.15|levelPerAdditionalPlayer=0|maximumPlayersCounted=8",
+      "boss.scale.refresh:entityId=boss_1",
+      "boss.scale.reset:entityId=boss_1",
+      "boss.reward.eligibility.set:maximumRecipients=5|eligibility=contribution",
+      "boss.unlock.policy.set:maximumUnlockRecipients=1|selectionPolicy=first_hit"
+    ],
+    "moba": [
+      "lane.define:laneId=top|team=1|waypoints=-2000,5,-2800,-1900,5,-2700,-1800,5,-2600|width=10",
+      "lane.wave.spawn:sessionId=moba_1|laneId=top|team=1|waveDefinition=melee_ranged|formation=line",
+      "lane.unit.advance:entityId=minion_1|laneId=top|waypointIndex=1|aggroRadius=10",
+      "lane.tower.spawn:sessionId=moba_1|team=1|marker=tower_top_1|prefab=Tower_Visual|attackRadius=15|invulnerableUntil=120",
+      "lane.tower.enable:towerId=tower_top_1",
+      "lane.tower.disable:towerId=tower_top_1",
+      "lane.structure.damage:structureId=tower_top_1|damage=100",
+      "match.currency.grant:sessionId=moba_1|steamId=76561198000000001|currencyId=gold|amount=100|reason=kill",
+      "match.currency.spend:sessionId=moba_1|steamId=76561198000000001|currencyId=gold|amount=50",
+      "match.upgrade.purchase:sessionId=moba_1|steamId=76561198000000001|upgradeId=sword_tier_2|cost=gold:300",
+      "match.form.policy.set:allowedForms=human,bat,wolf|blockedForms=bear,rat",
+      "match.recall:sessionId=moba_1|steamId=76561198000000001"
+    ],
+    "weather_time": [
+      "world.weather.set:weatherId=rain|transitionSeconds=10|durationSeconds=300|restorePrevious=true",
+      "world.weather.restore",
+      "world.time.advance:hours=8|adminApprovalRequired=true",
+      "world.time.set:hour=12|minute=0",
+      "sunlight.damage.scale:multiplier=2.0|zoneHash=2002|durationSeconds=120",
+      "sunlight.rule.set:mode=lethal|zoneHash=2002|eventOnly=true"
+    ],
+    "movement_revive": [
+      "player.revive.duration.set:steamId=76561198000000001|seconds=15|scope=event|durationSeconds=300",
+      "player.revive.duration.reset:steamId=76561198000000001",
+      "player.movement.modifier.apply:steamId=76561198000000001|multiplier=1.5|condition=out_of_combat|durationSeconds=60",
+      "player.movement.modifier.remove:steamId=76561198000000001",
+      "zone.movement.modifier.set:zoneHash=2002|multiplier=1.3|requireOutOfCombat=true"
+    ],
+    "ability_loadout": [
+      "ability.cooldown.multiplier.apply:steamId=76561198000000001|abilityGroup=all|multiplier=0.5|durationSeconds=30",
+      "ability.cooldown.multiplier.reset:steamId=76561198000000001",
+      "ability.loadout.capture:steamId=76561198000000001|loadoutId=pvp_setup|weaponType=sword",
+      "ability.loadout.apply:steamId=76561198000000001|loadoutId=pvp_setup|respectCooldowns=true",
+      "ability.loadout.bind_weapon:steamId=76561198000000001|weaponType=axe|loadoutId=pvp_setup",
+      "ability.loadout.unbind_weapon:steamId=76561198000000001|weaponType=axe",
+      "ability.slot.policy.set:scope=event|normalSlots=3|ultimateSlots=1|dashSlots=1|allowCrossCategory=false",
+      "ability.swap.policy.set:allowInCombat=false|preserveCooldowns=true"
+    ],
+    "equipment": [
+      "equipment.template.create:templateId=custom_sword|basePrefab=Item_Weapon_Sword_T08|gearLevel=85|abilityGroups=sword_abilities|statModifiers=damage:1.1,speed:1.05|appearancePrefab=Weapon_Sword_Unique",
+      "equipment.template.validate:templateId=custom_sword",
+      "equipment.template.grant:templateId=custom_sword|steamId=76561198000000001|amount=1|temporary=true",
+      "equipment.appearance.set:steamId=76561198000000001|slot=weapon|appearancePrefab=Weapon_Sword_Unique|hide=false",
+      "equipment.appearance.reset:steamId=76561198000000001|slot=weapon"
+    ],
+    "building": [
+      "object.place:prefab=Castle_Floor_Stone|position=-2000,5,-2800|rotation=0|ownerSteamId=76561198000000001|sessionId=event_1|trackingGroup=arena|safetyMode=event_tracked_zone_only",
+      "object.remove:objectId=placed_1|trackingGroup=arena",
+      "object.variant.set:objectId=placed_1|variantPrefab=Castle_Floor_Marble|preserveOwnership=true",
+      "schematic.capture:schematicId=arena_template|origin=-2000,5,-2800|radius=30",
+      "structure.railing.remove:filterCategory=railing|target=selectedStructure",
+      "structure.fade.policy.set:mode=disabled|zoneHash=2002"
+    ],
+    "servant_hunt": [
+      "servant.hunt.snapshot:ownerSteamId=76561198000000001",
+      "servant.hunt.repeat:ownerSteamId=76561198000000001|servantIds=servant_1,servant_2|selection=all",
+      "servant.hunt.assign:servantId=servant_1|huntId=farbane_woods|durationPolicy=fast",
+      "servant.hunt.cancel:servantId=servant_1",
+      "servant.hunt.validate:servantId=servant_1"
+    ],
+    "durability": [
+      "item.durability.restore:itemEntity=item_1|amount=100|maximum=100",
+      "item.durability.regeneration.set:containerCategory=castle_storage|itemCategory=weapon|amountPerTick=5|tickSeconds=60|requireStored=true",
+      "item.durability.regeneration.remove:containerCategory=castle_storage|itemCategory=weapon",
+      "container.item.rule.set:containerId=chest_1|itemFilter=weapon|effect=restore_durability"
+    ],
+    "crafting_mastery": [
+      "crafting.mastery.progress.add:steamId=76561198000000001|craftingCategory=weaponsmithing|experience=100",
+      "crafting.mastery.bonus.set:category=weaponsmithing|ingredientReduction=0.1|bonusItemChance=0.05|qualityUpgradeChance=0.02",
+      "crafting.result.modify:steamId=76561198000000001",
+      "mastery.perk.unlock:steamId=76561198000000001|treeId=weaponsmithing|perkId=efficient_crafting",
+      "mastery.perk.reset:steamId=76561198000000001|treeId=weaponsmithing"
+    ],
+    "admin": [
+      "player.chat.mute:steamId=76561198000000001|durationSeconds=300|reason=Spam|scope=global",
+      "player.chat.unmute:steamId=76561198000000001",
+      "player.afk.evaluate:steamId=76561198000000001",
+      "player.afk.remove:steamId=76561198000000001|minimumIdleSeconds=300|saveBeforeKick=true",
+      "siege.policy.set:scope=server|enabled=false|durationSeconds=3600",
+      "castle.raidability.set:castleHeart=entity_123|raidable=true|condition=shard_holder"
     ],
     "structure": [
       "build.search:filter=castle floor",
@@ -564,491 +831,321 @@
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "save snapshot",
-        "snapshot player"
-      ]
+      "aliases": ["save snapshot", "snapshot player"]
     },
     "kit.apply": {
       "category": "kit",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "apply kit",
-        "loadout"
-      ],
-      "required": [
-        "kitId"
-      ]
+      "aliases": ["apply kit", "loadout"],
+      "required": ["kitId"]
     },
     "kit.apply_weapons": {
       "category": "kit",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "apply weapons",
-        "weapon kit"
-      ]
+      "aliases": ["apply weapons", "weapon kit"]
     },
     "kit.apply_armor": {
       "category": "kit",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "apply armor",
-        "armor kit"
-      ]
+      "aliases": ["apply armor", "armor kit"]
     },
     "inventory.clear_kit": {
       "category": "kit",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "remove kit items",
-        "clear kit"
-      ],
-      "required": [
-        "kitId"
-      ]
+      "aliases": ["remove kit items", "clear kit"],
+      "required": ["kitId"]
     },
     "inventory.clear_all": {
       "category": "inventory",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "empty bags",
-        "clear inventory"
-      ]
+      "aliases": ["empty bags", "clear inventory"]
     },
     "inventory.count": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "count item",
-        "check inventory"
-      ],
-      "required": [
-        "itemId"
-      ]
+      "aliases": ["count item", "check inventory"],
+      "required": ["itemId"]
     },
     "inventory.send": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "give item",
-        "send item"
-      ],
-      "required": [
-        "itemId"
-      ],
-      "optional": [
-        "amount"
-      ]
+      "aliases": ["give item", "send item"],
+      "required": ["itemId"],
+      "optional": ["amount"]
     },
     "snapshot.save_old": {
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "legacy save snapshot"
-      ]
+      "aliases": ["legacy save snapshot"]
     },
     "snapshot.restore": {
       "category": "snapshot",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "restore snapshot",
-        "rollback player"
-      ]
+      "aliases": ["restore snapshot", "rollback player"]
     },
     "player.snapshot.restore": {
       "category": "snapshot",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "restore player snapshot",
-        "rollback player snapshot"
-      ]
+      "aliases": ["restore player snapshot", "rollback player snapshot"]
     },
     "snapshot.restore_old": {
       "category": "snapshot",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "legacy restore snapshot"
-      ]
+      "aliases": ["legacy restore snapshot"]
     },
     "snapshot.clear": {
       "category": "snapshot",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "clear snapshot"
-      ]
+      "aliases": ["clear snapshot"]
     },
     "snapshot.mark_active": {
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "mark player active"
-      ]
+      "aliases": ["mark player active"]
     },
     "snapshot.clear_active": {
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "clear active player"
-      ]
+      "aliases": ["clear active player"]
     },
     "state.clear_old": {
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "legacy clear state"
-      ]
+      "aliases": ["legacy clear state"]
     },
     "state.clear_zone": {
       "category": "snapshot",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "clear zone state"
-      ]
+      "aliases": ["clear zone state"]
     },
     "level.set_max": {
       "category": "state",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "max level",
-        "set level max"
-      ]
+      "aliases": ["max level", "set level max"]
     },
     "heal": {
       "category": "state",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "full health",
-        "restore health"
-      ]
+      "aliases": ["full health", "restore health"]
     },
     "buff.clear_all": {
       "category": "state",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "remove buffs",
-        "clean buffs"
-      ]
+      "aliases": ["remove buffs", "clean buffs"]
     },
     "progression.unlock_gear": {
       "category": "progression",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "unlock gear",
-        "max equipment"
-      ]
+      "aliases": ["unlock gear", "max equipment"]
     },
     "progression.set_tier": {
       "category": "progression",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set progression tier",
-        "jump to tier"
-      ],
-      "required": [
-        "tier"
-      ]
+      "aliases": ["set progression tier", "jump to tier"],
+      "required": ["tier"]
     },
     "tech.apply": {
       "category": "progression",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "apply technology",
-        "learn tech"
-      ],
-      "required": [
-        "techIds"
-      ]
+      "aliases": ["apply technology", "learn tech"],
+      "required": ["techIds"]
     },
     "notify": {
       "category": "notify",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "message",
-        "announce"
-      ]
+      "aliases": ["message", "announce"]
     },
     "notification": {
       "category": "notify",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "message",
-        "announce"
-      ]
+      "aliases": ["message", "announce"]
     },
     "announce": {
       "category": "notify",
       "description": "Send a colored in-game event announcement. Supports color/rgb/hex, level, title, scope, and placeholders like {mode}, {zone}, {players}, {session}.",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "colored message",
-        "event announcement",
-        "phase announcement",
-        "timer announcement"
-      ],
-      "required": [
-        "message"
-      ],
-      "optional": [
-        "title",
-        "color",
-        "rgb",
-        "hex",
-        "level",
-        "scope"
-      ]
+      "aliases": ["colored message", "event announcement", "phase announcement", "timer announcement"],
+      "required": ["message"],
+      "optional": ["title", "color", "rgb", "hex", "level", "scope"]
     },
     "send_message": {
       "category": "notify",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "chat message",
-        "whisper"
-      ],
-      "required": [
-        "message"
-      ]
+      "aliases": ["chat message", "whisper"],
+      "required": ["message"]
     },
     "enable_pvp": {
       "category": "pvp",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "pvp on",
-        "allow pvp"
-      ]
+      "aliases": ["pvp on", "allow pvp"]
     },
     "disable_pvp": {
       "category": "pvp",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "pvp off",
-        "no pvp"
-      ]
+      "aliases": ["pvp off", "no pvp"]
     },
     "pvp.enable": {
       "category": "pvp",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "start pvp"
-      ]
+      "aliases": ["start pvp"]
     },
     "pvp.disable": {
       "category": "pvp",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "stop pvp"
-      ]
+      "aliases": ["stop pvp"]
     },
     "teleport": {
       "category": "teleport",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "tp",
-        "warp"
-      ]
+      "aliases": ["tp", "warp"]
     },
     "player.teleport": {
       "category": "teleport",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move player"
-      ]
+      "aliases": ["move player"]
     },
     "teleport.position": {
       "category": "teleport",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "tp pos"
-      ],
-      "required": [
-        "position"
-      ]
+      "aliases": ["tp pos"],
+      "required": ["position"]
     },
     "auto.teleport": {
       "category": "teleport",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "automatic warp"
-      ]
+      "aliases": ["automatic warp"]
     },
     "spawn.wave": {
       "category": "spawn",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "enemy wave",
-        "wave spawn"
-      ],
-      "required": [
-        "waveId"
-      ]
+      "aliases": ["enemy wave", "wave spawn"],
+      "required": ["waveId"]
     },
     "spawnwave": {
       "category": "spawn",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "legacy wave"
-      ],
-      "required": [
-        "waveId"
-      ]
+      "aliases": ["legacy wave"],
+      "required": ["waveId"]
     },
     "boss.spawn": {
       "category": "spawn",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "create boss"
-      ],
-      "required": [
-        "prefab"
-      ]
+      "aliases": ["create boss"],
+      "required": ["prefab"]
     },
     "spawn.boss": {
       "category": "spawn",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "create boss"
-      ],
-      "required": [
-        "prefab"
-      ]
+      "aliases": ["create boss"],
+      "required": ["prefab"]
     },
     "spawn.npc": {
       "category": "spawn",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "create npc"
-      ],
-      "required": [
-        "prefab"
-      ]
+      "aliases": ["create npc"],
+      "required": ["prefab"]
     },
     "boss.follow": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "boss follow"
-      ]
+      "aliases": ["boss follow"]
     },
     "boss.follow_target": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "boss follow target"
-      ],
-      "required": [
-        "target"
-      ]
+      "aliases": ["boss follow target"],
+      "required": ["target"]
     },
     "boss.clear_follow": {
       "category": "npc_control",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "boss stop follow"
-      ]
+      "aliases": ["boss stop follow"]
     },
     "boss.add_servant": {
       "category": "boss_servant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "prefab"
-      ]
+      "required": ["prefab"]
     },
     "boss.remove_servant": {
       "category": "boss_servant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "servantId"
-      ]
+      "required": ["servantId"]
     },
     "boss.command_servants": {
       "category": "boss_servant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "command"
-      ]
+      "required": ["command"]
     },
     "boss.spawn_servants": {
       "category": "boss_servant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "prefab"
-      ]
+      "required": ["prefab"]
     },
     "prefab.query": {
       "category": "prefab",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "find prefab",
-        "search prefab"
-      ]
+      "aliases": ["find prefab", "search prefab"]
     },
     "prefab.spawn": {
       "category": "prefab",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "create object"
-      ],
-      "required": [
-        "prefab"
-      ]
+      "aliases": ["create object"],
+      "required": ["prefab"]
     },
     "prefab.grant": {
       "category": "prefab",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "give item"
-      ],
-      "required": [
-        "prefab"
-      ]
+      "aliases": ["give item"],
+      "required": ["prefab"]
     },
     "trap.place": {
       "category": "trap",
@@ -1069,1227 +1166,676 @@
       "category": "merchant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "description": "Execute a configured numbered merchant UUID listing for the current player. Listings live in merchant_servant_actions.json and can rent bosses, teleport players, or run admin-only action bundles.",
-      "aliases": [
-        "run merchant uuid",
-        "execute merchant listing",
-        "rent boss",
-        "merchant teleport",
-        "merchant command"
-      ],
-      "required": [
-        "listingId"
-      ],
-      "optional": [
-        "uuid",
-        "id",
-        "consume",
-        "consumeInventoryItem"
-      ],
-      "examples": [
-        "merchant.run:listingId=d64b7b8b-7a64-47a6-95d0-9ac4fdac8b2e",
-        "merchant.run:uuid=e4eb8a85-8b0f-4fb6-91ad-15320c8bed16"
-      ]
+      "description": "Execute a configured numbered merchant UUID listing for the current player.",
+      "aliases": ["run merchant uuid", "execute merchant listing", "rent boss", "merchant teleport", "merchant command"],
+      "required": ["listingId"],
+      "optional": ["uuid", "id", "consume", "consumeInventoryItem"]
     },
     "merchant.grant": {
       "category": "merchant",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "description": "Grant the configured item token for a merchant UUID listing. When token scanning is enabled, the token activates after it appears in the player's inventory.",
-      "aliases": [
-        "give merchant token",
-        "grant rental token",
-        "give boss rental item",
-        "give teleport merchant item"
-      ],
-      "required": [
-        "listingId"
-      ],
-      "optional": [
-        "uuid",
-        "id",
-        "amount"
-      ],
-      "examples": [
-        "merchant.grant:listingId=d64b7b8b-7a64-47a6-95d0-9ac4fdac8b2e|amount=1"
-      ]
+      "description": "Grant the configured item token for a merchant UUID listing.",
+      "aliases": ["give merchant token", "grant rental token", "give boss rental item", "give teleport merchant item"],
+      "required": ["listingId"],
+      "optional": ["uuid", "id", "amount"]
     },
     "timer.start": {
       "category": "score_timer",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "start timer",
-        "countdown"
-      ]
+      "aliases": ["start timer", "countdown"]
     },
     "score.add": {
       "category": "score_timer",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "add score",
-        "points"
-      ]
+      "aliases": ["add score", "points"]
     },
     "ability.set_slot": {
       "category": "state",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set q spell",
-        "set e spell",
-        "set r spell"
-      ],
+      "aliases": ["set q spell", "set e spell", "set r spell"],
       "notes": "Only Q/E/R slots are allowed. Travel/T is controlled by kit config."
     },
     "team.autobalance": {
       "category": "team",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "auto balance teams",
-        "rebalance teams"
-      ]
+      "aliases": ["auto balance teams", "rebalance teams"]
     },
     "system.find": {
       "category": "ai",
-      "description": "Hot-reloaded event/admin action that asks AI to explain matching ECS/ProjectM/Unity/EOS systems from the KindredExtract reference inventory. Safe for runtime_inject and flow JSON.",
+      "description": "Hot-reloaded event/admin action that asks AI to explain matching ECS/ProjectM/Unity/EOS systems.",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "find ecs system",
-        "explain projectm system",
-        "find eos system"
-      ],
-      "required": [
-        "query"
-      ],
-      "optional": [
-        "description",
-        "text",
-        "scope",
-        "limit"
-      ],
-      "examples": [
-        "system.find:query=player connect disconnect network|scope=admin",
-        "system.find:query=eos platform login networking|scope=self",
-        "system.find:query=castle territory owner|limit=5"
-      ]
+      "aliases": ["find ecs system", "explain projectm system", "find eos system"],
+      "required": ["query"],
+      "optional": ["description", "text", "scope", "limit"]
     },
     "system.search": {
       "category": "ai",
-      "description": "Local-only KindredExtract reference search. Does not call AI, useful when providers are offline.",
+      "description": "Local-only KindredExtract reference search.",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "search ecs system",
-        "search projectm reference"
-      ],
-      "required": [
-        "query"
-      ],
-      "optional": [
-        "description",
-        "text",
-        "scope",
-        "limit"
-      ],
-      "examples": [
-        "system.search:query=PrefabGUID spawn|scope=self",
-        "system.search:query=ProjectM.Network WarEvent|scope=admin"
-      ]
+      "aliases": ["search ecs system", "search projectm reference"],
+      "required": ["query"],
+      "optional": ["description", "text", "scope", "limit"]
     },
     "system.register": {
       "category": "system",
-      "description": "Admin-approved live registration of an exact ProjectM or Unity ECS system from the local KindredExtract inventory. Registration creates a verified BattleLuck reference/action only; it never creates, patches, or invokes a native ECS system.",
+      "description": "Admin-approved live registration of an exact ProjectM or Unity ECS system.",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "register projectm system",
-        "register unity system",
-        "add live system reference"
-      ],
-      "required": [
-        "systemType"
-      ],
-      "optional": [
-        "runtime",
-        "alias",
-        "description",
-        "scope"
-      ],
-      "examples": [
-        "system.register:systemType=ProjectM.AbilityInputSystem|runtime=ProjectM|alias=system.projectm.ability_input|description=Ability input reference",
-        "system.register:systemType=Unity.Entities.EndSimulationEntityCommandBufferSystem|runtime=Unity|alias=system.unity.end_sim_ecb"
-      ]
+      "aliases": ["register projectm system", "register unity system", "add live system reference"],
+      "required": ["systemType"],
+      "optional": ["runtime", "alias", "description", "scope"]
     },
     "blood.change": {
       "category": "blood",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "change blood",
-        "blood type",
-        "set blood"
-      ]
+      "aliases": ["change blood", "blood type", "set blood"]
     },
     "spawn.boss": {
       "category": "spawn_boss",
-      "description": "Spawn and register a controlled event boss. Bloodbath bosses should normally use neutralUntilStart=true and protectTeam=true so they do not attack before the match and cannot hurt their assigned team.",
+      "description": "Spawn and register a controlled event boss.",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "add boss",
-        "spawn boss",
-        "team boss",
-        "bloodbath boss",
-        "neutral boss",
-        "protected boss"
-      ],
-      "required": [
-        "prefab"
-      ],
-      "optional": [
-        "bossId",
-        "position",
-        "level",
-        "homeRadius",
-        "teamId",
-        "team",
-        "behavior",
-        "neutralUntilStart",
-        "neutralUntilStarted",
-        "protectTeam",
-        "neutralTeamId"
-      ],
-      "defaults": {
-        "level": "85",
-        "homeRadius": "40",
-        "behavior": "idle",
-        "neutralUntilStart": "true",
-        "protectTeam": "true",
-        "neutralTeamId": "100"
-      }
+      "aliases": ["add boss", "spawn boss", "team boss", "bloodbath boss", "neutral boss", "protected boss"],
+      "required": ["prefab"],
+      "optional": ["bossId", "position", "level", "homeRadius", "teamId", "team", "behavior", "neutralUntilStart", "neutralUntilStarted", "protectTeam", "neutralTeamId"],
+      "defaults": {"level": "85", "homeRadius": "40", "behavior": "idle", "neutralUntilStart": "true", "protectTeam": "true", "neutralTeamId": "100"}
     },
     "ai.boss.aggro": {
       "category": "ai",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "boss attack",
-        "make boss aggro"
-      ],
-      "optional": [
-        "bossId",
-        "prefab",
-        "target",
-        "aggroRange",
-        "leashRange"
-      ]
+      "aliases": ["boss attack", "make boss aggro"],
+      "optional": ["bossId", "prefab", "target", "aggroRange", "leashRange"]
     },
     "ai.boss.deaggro": {
       "category": "ai",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "boss stop",
-        "boss neutral",
-        "clear boss aggro"
-      ],
-      "optional": [
-        "bossId",
-        "prefab"
-      ]
+      "aliases": ["boss stop", "boss neutral", "clear boss aggro"],
+      "optional": ["bossId", "prefab"]
     },
     "ai.set_behavior": {
       "category": "ai",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "boss behavior",
-        "set boss ai",
-        "boss idle",
-        "boss guard",
-        "boss chase"
-      ],
-      "required": [
-        "behavior"
-      ],
-      "optional": [
-        "bossId",
-        "prefab",
-        "radius"
-      ]
+      "aliases": ["boss behavior", "set boss ai", "boss idle", "boss guard", "boss chase"],
+      "required": ["behavior"],
+      "optional": ["bossId", "prefab", "radius"]
     },
     "boss.goto": {
       "category": "ai",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move boss",
-        "boss move",
-        "send boss",
-        "boss go to position"
-      ],
-      "optional": [
-        "bossId",
-        "prefab",
-        "position",
-        "arrivalRange",
-        "hold",
-        "completeBehavior"
-      ]
+      "aliases": ["move boss", "boss move", "send boss", "boss go to position"],
+      "optional": ["bossId", "prefab", "position", "arrivalRange", "hold", "completeBehavior"]
     },
     "boss.goto.pos": {
       "category": "ai",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move boss to admin",
-        "move boss to me",
-        "boss mouse position",
-        "boss cursor"
-      ],
-      "optional": [
-        "bossId",
-        "prefab",
-        "arrivalRange",
-        "hold"
-      ]
+      "aliases": ["move boss to admin", "move boss to me", "boss mouse position", "boss cursor"],
+      "optional": ["bossId", "prefab", "arrivalRange", "hold"]
     },
     "boss.return_home": {
       "category": "ai",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "boss home",
-        "return boss",
-        "reset boss position"
-      ],
-      "optional": [
-        "bossId",
-        "prefab"
-      ]
+      "aliases": ["boss home", "return boss", "reset boss position"],
+      "optional": ["bossId", "prefab"]
     },
     "npc.spawn": {
       "category": "spawn_npc",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "add npc",
-        "spawn npc",
-        "summon guard",
-        "spawn minion"
-      ]
+      "aliases": ["add npc", "spawn npc", "summon guard", "spawn minion"]
     },
     "npc.follow": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc follow",
-        "guard follow",
-        "make npc follow"
-      ],
-      "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "target", "followRange", "leashRange"],
-      "notes": "selector can be npcId, near, near:radius, pos:x,y,z:radius, all, or a prefab/display-name match. position+radius selects NPCs for non-goto actions; selectPosition/selectRadius is preferred."
+      "aliases": ["npc follow", "guard follow", "make npc follow"],
+      "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "target", "followRange", "leashRange"]
     },
     "npc.aggro": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc attack",
-        "npc chase",
-        "guard attack"
-      ],
+      "aliases": ["npc attack", "npc chase", "guard attack"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "target", "range", "aggroRange", "leashRange"]
     },
     "npc.goto": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move npc",
-        "send npc",
-        "npc move"
-      ],
-      "optional": ["npcId", "selector", "selectPosition", "selectRadius", "radius", "limit", "position", "destination", "targetPosition", "arrivalRange"],
-      "notes": "For npc.goto, position/destination is the move target. Use selectPosition/selectRadius or selector=pos:x,y,z:radius to choose NPCs by area."
+      "aliases": ["move npc", "send npc", "npc move"],
+      "optional": ["npcId", "selector", "selectPosition", "selectRadius", "radius", "limit", "position", "destination", "targetPosition", "arrivalRange"]
     },
     "npc.goto.pos": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move npc to mouse",
-        "npc cursor",
-        "npc mouse position"
-      ],
+      "aliases": ["move npc to mouse", "npc cursor", "npc mouse position"],
       "optional": ["npcId", "selector", "selectPosition", "selectRadius", "radius", "limit", "arrivalRange"]
     },
     "npc.hold": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc stay",
-        "hold npc",
-        "guard position"
-      ],
+      "aliases": ["npc stay", "hold npc", "guard position"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "holdRadius", "homeRadius", "limit"]
     },
     "npc.release": {
       "category": "npc_control",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "release npc",
-        "native ai"
-      ],
+      "aliases": ["release npc", "native ai"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit"]
     },
     "npc.despawn": {
       "category": "npc_control",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "remove npc",
-        "delete npc",
-        "despawn guard"
-      ],
+      "aliases": ["remove npc", "delete npc", "despawn guard"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit"]
     },
     "npc.team": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc team",
-        "friendly npc",
-        "hostile npc"
-      ],
+      "aliases": ["npc team", "friendly npc", "hostile npc"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "teamId"]
     },
     "npc.faction": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc faction",
-        "set npc faction"
-      ],
+      "aliases": ["npc faction", "set npc faction"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "factionPrefab", "factionId"]
     },
     "npc.speed": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc movement speed",
-        "fast npc",
-        "slow npc"
-      ],
+      "aliases": ["npc movement speed", "fast npc", "slow npc"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "speed"]
     },
     "npc.rename": {
       "category": "npc_control",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "rename npc",
-        "npc name"
-      ],
+      "aliases": ["rename npc", "npc name"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "name", "displayName"]
     },
     "npc.patrol": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "patrol npc",
-        "npc patrol route",
-        "set patrol path"
-      ],
+      "aliases": ["patrol npc", "npc patrol route", "set patrol path"],
       "optional": ["npcId", "selector", "waypoints", "waypoint.1", "waypoint.2", "waypoint.3", "limit"]
     },
     "npc.guard": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "guard npc",
-        "npc guard post",
-        "station npc"
-      ],
+      "aliases": ["guard npc", "npc guard post", "station npc"],
       "optional": ["npcId", "selector", "position", "selectPosition", "selectRadius", "radius", "limit", "detectionRadius", "chaseRange", "returnRadius", "target"]
     },
     "npc.flee": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc flee",
-        "make npc run",
-        "scare npc"
-      ],
+      "aliases": ["npc flee", "make npc run", "scare npc"],
       "optional": ["npcId", "selector", "position", "target", "safeDistance", "duration", "speedMultiplier", "limit"]
     },
     "npc.wander": {
       "category": "npc_control",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "npc wander",
-        "roam npc",
-        "free roam npc"
-      ],
+      "aliases": ["npc wander", "roam npc", "free roam npc"],
       "optional": ["npcId", "selector", "radius", "minPause", "maxPause", "limit"]
     },
     "npc.formation": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "npc formation",
-        "formation npc",
-        " arrange npcs"
-      ],
+      "aliases": ["npc formation", "formation npc", "arrange npcs"],
       "optional": ["npcId", "selector", "slot.1", "slot.2", "slot.3", "slot.4", "slot.5", "leaderId", "leader", "position", "limit"]
     },
     "build.search": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "search build prefab",
-        "find tile",
-        "find wall",
-        "find floor",
-        "palette search"
-      ],
-      "required": [
-        "filter"
-      ]
+      "aliases": ["search build prefab", "find tile", "find wall", "find floor", "palette search"],
+      "required": ["filter"]
     },
     "palette.add": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "palette add",
-        "add build palette",
-        "remember prefab"
-      ],
-      "required": [
-        "search"
-      ],
-      "notes": "Adds the best live build/tile prefab match to the requesting player's build palette. Use before build.spawn:prefab=palette."
+      "aliases": ["palette add", "add build palette", "remember prefab"],
+      "required": ["search"]
     },
     "palette.remove": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "palette remove",
-        "remove build palette"
-      ],
-      "required": [
-        "search"
-      ]
+      "aliases": ["palette remove", "remove build palette"],
+      "required": ["search"]
     },
     "palette.clear": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "clear palette",
-        "reset build palette"
-      ]
+      "aliases": ["clear palette", "reset build palette"]
     },
     "palette.next": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "next palette",
-        "cycle palette"
-      ]
+      "aliases": ["next palette", "cycle palette"]
     },
     "palette.prev": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "previous palette",
-        "palette previous"
-      ]
+      "aliases": ["previous palette", "palette previous"]
     },
     "palette.list": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "list palette",
-        "show build palette"
-      ]
+      "aliases": ["list palette", "show build palette"]
     },
     "palette.current": {
       "category": "structure",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "current palette",
-        "selected palette"
-      ]
+      "aliases": ["current palette", "selected palette"]
     },
     "schematic.clear": {
       "category": "schematic",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "clear schematic",
-        "remove castle design"
-      ]
+      "aliases": ["clear schematic", "remove castle design"]
     },
     "schematic.load": {
       "category": "schematic",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "load schematic",
-        "spawn schematic"
-      ],
-      "required": [
-        "eventName",
-        "safetyMode"
-      ],
-      "optional": [
-        "position",
-        "offset",
-        "zoneOffset",
-        "radius",
-        "clearOld",
-        "clearRadius",
-        "spawnItems",
-        "heightOffset",
-        "safetyMode"
-      ],
-      "defaults": {
-        "spawnItems": "false"
-      }
+      "aliases": ["load schematic", "spawn schematic"],
+      "required": ["eventName", "safetyMode"],
+      "optional": ["position", "offset", "zoneOffset", "radius", "clearOld", "clearRadius", "spawnItems", "heightOffset", "safetyMode"],
+      "defaults": {"spawnItems": "false"}
     },
     "schematic.loadat": {
       "category": "schematic",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "load schematic at position"
-      ],
-      "required": [
-        "eventName",
-        "safetyMode"
-      ]
+      "aliases": ["load schematic at position"],
+      "required": ["eventName", "safetyMode"]
     },
     "schematic.loadatpos": {
       "category": "schematic",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "load schematic at player"
-      ],
-      "required": [
-        "eventName",
-        "safetyMode"
-      ]
+      "aliases": ["load schematic at player"],
+      "required": ["eventName", "safetyMode"]
     },
     "schematic.clear.radius": {
       "category": "schematic",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "clear schematic radius",
-        "remove schematic nearby"
-      ]
+      "aliases": ["clear schematic radius", "remove schematic nearby"]
     },
     "schematic.destroy.radius": {
       "category": "schematic",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "clear tracked schematic radius",
-        "remove tracked schematic nearby"
-      ],
-      "notes": "Compatibility alias for tracked-only cleanup. Never sweeps or destroys untracked world buildings, floors, walls, or items."
+      "aliases": ["clear tracked schematic radius", "remove tracked schematic nearby"]
     },
     "entity.spawn": {
       "category": "prefab",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "spawn entity",
-        "create entity"
-      ]
+      "aliases": ["spawn entity", "create entity"]
     },
     "entity.destroy": {
       "category": "prefab",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "destroy entity",
-        "delete entity"
-      ]
+      "aliases": ["destroy entity", "delete entity"]
     },
     "entity.count": {
       "category": "prefab",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "count entity",
-        "count entities"
-      ]
+      "aliases": ["count entity", "count entities"]
     },
     "entity.query": {
       "category": "prefab",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "query entity",
-        "find entities"
-      ]
+      "aliases": ["query entity", "find entities"]
     },
     "entity.validate": {
       "category": "prefab",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "validate entity count"
-      ]
-    },
-    "entity.destroy": {
-      "category": "prefab",
-      "riskLevel": "destructive",
-      "requiresApproval": true,
-      "aliases": [
-        "destroy entity",
-        "delete entity"
-      ]
+      "aliases": ["validate entity count"]
     },
     "entity.damage": {
       "category": "entity",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "hurt entity"
-      ]
+      "aliases": ["hurt entity"]
     },
     "entity.heal": {
       "category": "entity",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "heal entity"
-      ]
+      "aliases": ["heal entity"]
     },
     "entity.damage_percent": {
       "category": "entity",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "hurt entity percent"
-      ]
+      "aliases": ["hurt entity percent"]
     },
     "entity.heal_percent": {
       "category": "entity",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "heal entity percent"
-      ]
+      "aliases": ["heal entity percent"]
     },
     "progression.unlock.all_vbloods": {
       "category": "progression",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "unlock bosses",
-        "unlock vbloods",
-        "unlock boss progression"
-      ],
-      "notes": "Progression unlock request only. Do not add boss-lock or altar-block patches."
+      "aliases": ["unlock bosses", "unlock vbloods", "unlock boss progression"]
     },
     "progression.unlock.all_research": {
       "category": "progression",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "unlock research",
-        "unlock recipes",
-        "unlock technology"
-      ],
-      "notes": "Progression unlock request only. Avoid permanent mutation unless rollback support exists."
+      "aliases": ["unlock research", "unlock recipes", "unlock technology"]
     },
     "inventory.stash": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "stash items",
-        "store in chest"
-      ]
+      "aliases": ["stash items", "store in chest"]
     },
     "inventory.salvage": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "salvage items",
-        "trash items"
-      ]
+      "aliases": ["salvage items", "trash items"]
     },
     "inventory.pull": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "pull items",
-        "get from chest"
-      ]
+      "aliases": ["pull items", "get from chest"]
     },
     "inventory.craftpull": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "pull for craft",
-        "automatic crafting pull"
-      ]
+      "aliases": ["pull for craft", "automatic crafting pull"]
     },
     "inventory.sort": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "sort inventory",
-        "clean bags"
-      ]
+      "aliases": ["sort inventory", "clean bags"]
     },
     "inventory.emptytrash": {
       "category": "inventory",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "empty trash",
-        "delete trashed items"
-      ]
+      "aliases": ["empty trash", "delete trashed items"]
     },
     "logistics.setting": {
       "category": "logistics",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "toggle logistics",
-        "change logistics setting"
-      ],
-      "required": [
-        "setting"
-      ]
+      "aliases": ["toggle logistics", "change logistics setting"],
+      "required": ["setting"]
     },
     "config.reload": {
       "category": "admin",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "reload config",
-        "hot reload"
-      ],
-      "optional": [
-        "modeId"
-      ]
+      "aliases": ["reload config", "hot reload"],
+      "optional": ["modeId"]
     },
     "event.reload": {
       "category": "admin",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "reload event"
-      ],
-      "optional": [
-        "modeId"
-      ]
+      "aliases": ["reload event"],
+      "optional": ["modeId"]
     },
     "config.set_rule": {
       "category": "admin",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set rule",
-        "change rule"
-      ],
-      "required": [
-        "rule",
-        "value"
-      ],
-      "optional": [
-        "modeId"
-      ]
+      "aliases": ["set rule", "change rule"],
+      "required": ["rule", "value"],
+      "optional": ["modeId"]
     },
     "config.set_metadata": {
       "category": "admin",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set metadata"
-      ],
-      "required": [
-        "key",
-        "value"
-      ],
-      "optional": [
-        "modeId"
-      ]
+      "aliases": ["set metadata"],
+      "required": ["key", "value"],
+      "optional": ["modeId"]
     },
     "event.set_prompt": {
       "category": "admin",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set ai prompt",
-        "update operator prompt"
-      ],
-      "required": [
-        "prompt"
-      ]
+      "aliases": ["set ai prompt", "update operator prompt"],
+      "required": ["prompt"]
     },
     "mount.summon": {
       "category": "mount",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "get mount",
-        "summon horse"
-      ]
+      "aliases": ["get mount", "summon horse"]
     },
     "mount.dismiss": {
       "category": "mount",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "remove mount",
-        "dismiss horse"
-      ]
+      "aliases": ["remove mount", "dismiss horse"]
     },
     "mount.slowdown": {
       "category": "mount",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "slow horse"
-      ]
+      "aliases": ["slow horse"]
     },
     "horse.mutate": {
       "category": "mount",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "change horse",
-        "mutate mount"
-      ]
+      "aliases": ["change horse", "mutate mount"]
     },
     "horse.dismiss": {
       "category": "mount",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "dismiss horse"
-      ]
+      "aliases": ["dismiss horse"]
     },
     "zone.buff.apply": {
       "category": "zone",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "apply zone buff",
-        "buff everyone in zone"
-      ],
-      "required": [
-        "buffPrefab"
-      ]
+      "aliases": ["apply zone buff", "buff everyone in zone"],
+      "required": ["buffPrefab"]
     },
     "zone.buff.remove": {
       "category": "zone",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "remove zone buff"
-      ],
-      "required": [
-        "buffPrefab"
-      ]
+      "aliases": ["remove zone buff"],
+      "required": ["buffPrefab"]
     },
     "shrink.zone": {
       "category": "zone",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "start shrink",
-        "shrink arena",
-        "closing zone"
-      ]
+      "aliases": ["start shrink", "shrink arena", "closing zone"]
     },
     "shrink.stop": {
       "category": "zone",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "stop shrink",
-        "stop closing zone"
-      ]
+      "aliases": ["stop shrink", "stop closing zone"]
     },
     "glow.enable": {
       "category": "glow_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "enable glow",
-        "turn on glow"
-      ]
+      "aliases": ["enable glow", "turn on glow"]
     },
     "glow.disable": {
       "category": "glow_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "disable glow",
-        "turn off glow"
-      ]
+      "aliases": ["disable glow", "turn off glow"]
     },
     "sequence.custom.preview": {
       "category": "custom_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "show custom sequence",
-        "preview custom sequence",
-        "inspect sequence"
-      ],
-      "required": [
-        "sequenceId"
-      ],
-      "optional": [
-        "id",
-        "name",
-        "sequence"
-      ],
+      "aliases": ["show custom sequence", "preview custom sequence", "inspect sequence"],
+      "required": ["sequenceId"],
+      "optional": ["id", "name", "sequence"],
       "description": "Preview a reusable BattleLuck custom sequence without executing it."
     },
     "sequence.custom.play": {
       "category": "custom_sequence",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "play custom sequence",
-        "queue custom sequence",
-        "run timed action sequence"
-      ],
-      "required": [
-        "sequenceId"
-      ],
-      "optional": [
-        "schedule",
-        "timed",
-        "queue"
-      ],
-      "description": "Run a named custom sequence from custom_sequences.json. In unified event runtime, timed steps are queued on the session clock."
+      "aliases": ["play custom sequence", "queue custom sequence", "run timed action sequence"],
+      "required": ["sequenceId"],
+      "optional": ["schedule", "timed", "queue"],
+      "description": "Run a named custom sequence from custom_sequences.json."
     },
     "sequence.custom.run": {
       "category": "custom_sequence",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "run custom sequence",
-        "execute action sequence"
-      ],
-      "required": [
-        "sequenceId"
-      ],
-      "optional": [
-        "schedule"
-      ],
+      "aliases": ["run custom sequence", "execute action sequence"],
+      "required": ["sequenceId"],
+      "optional": ["schedule"],
       "description": "Alias for sequence.custom.play."
     },
     "sequence.custom.execute": {
       "category": "custom_sequence",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "execute custom sequence"
-      ],
-      "required": [
-        "sequenceId"
-      ],
-      "optional": [
-        "schedule"
-      ],
+      "aliases": ["execute custom sequence"],
+      "required": ["sequenceId"],
+      "optional": ["schedule"],
       "description": "Alias for sequence.custom.play."
     },
     "sequence.step.run": {
       "category": "sequence",
       "riskLevel": "controlled",
       "requiresApproval": false,
-      "aliases": [
-        "run step",
-        "execute step",
-        "play step"
-      ],
-      "required": [
-        "sequenceId",
-        "stepId"
-      ],
-      "optional": [
-        "delaySeconds",
-        "target"
-      ],
-      "description": "Execute a specific step from a registered sequence by sequenceId and stepId."
+      "aliases": ["run step", "execute step", "play step"],
+      "required": ["sequenceId", "stepId"],
+      "optional": ["delaySeconds", "target"],
+      "description": "Execute a specific step from a registered sequence."
     },
     "sequence.step.skip": {
       "category": "sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "skip step"
-      ],
-      "required": [
-        "sequenceId",
-        "stepId"
-      ],
-      "description": "Skip a specific step in a registered sequence without executing it."
+      "aliases": ["skip step"],
+      "required": ["sequenceId", "stepId"],
+      "description": "Skip a specific step in a registered sequence."
     },
     "sequence.step.retry": {
       "category": "sequence",
       "riskLevel": "controlled",
       "requiresApproval": false,
-      "aliases": [
-        "retry step"
-      ],
-      "required": [
-        "sequenceId",
-        "stepId"
-      ],
-      "optional": [
-        "maxRetries"
-      ],
-      "description": "Retry a specific step in a registered sequence, logging the retry attempt."
+      "aliases": ["retry step"],
+      "required": ["sequenceId", "stepId"],
+      "optional": ["maxRetries"],
+      "description": "Retry a specific step in a registered sequence."
     },
     "revive.grant": {
       "category": "revive",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set lives",
-        "death count",
-        "extra lives"
-      ],
-      "required": [
-        "maxLives"
-      ],
-      "optional": [
-        "target",
-        "scope",
-        "all"
-      ]
+      "aliases": ["set lives", "death count", "extra lives"],
+      "required": ["maxLives"],
+      "optional": ["target", "scope", "all"]
     },
     "revive.reset": {
       "category": "revive",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "aliases": [
-        "clear lives",
-        "reset lives"
-      ],
-      "optional": [
-        "target",
-        "scope",
-        "all"
-      ]
+      "aliases": ["clear lives", "reset lives"],
+      "optional": ["target", "scope", "all"]
     },
     "objective.deliver": {
       "category": "objective",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "move item",
-        "deliver item",
-        "relic run",
-        "carry target",
-        "move chest item"
-      ],
-      "required": [
-        "objectiveId"
-      ],
-      "optional": [
-        "itemId",
-        "itemPrefab",
-        "prefab",
-        "amount",
-        "position",
-        "radius",
-        "rewardPoints",
-        "points",
-        "teamId",
-        "message"
-      ],
-      "description": "Require a player to carry an optional item to a target position, remove the item, award player/team score, and emit objective captured."
+      "aliases": ["move item", "deliver item", "relic run", "carry target", "move chest item"],
+      "required": ["objectiveId"],
+      "optional": ["itemId", "itemPrefab", "prefab", "amount", "position", "radius", "rewardPoints", "points", "teamId", "message"],
+      "description": "Require a player to carry an optional item to a target position."
     },
     "mode.end": {
       "category": "mode",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "end event",
-        "stop mode"
-      ]
+      "aliases": ["end event", "stop mode"]
     },
     "mode.start": {
       "category": "mode",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "start event"
-      ]
+      "aliases": ["start event"]
     },
     "warevent_start": {
       "category": "mode",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "legacy start"
-      ]
+      "aliases": ["legacy start"]
     },
     "warevent_end": {
       "category": "mode",
       "riskLevel": "destructive",
       "requiresApproval": true,
-      "aliases": [
-        "legacy end"
-      ]
+      "aliases": ["legacy end"]
     },
     "point.set": {
       "category": "utility",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "pointId"
-      ]
+      "required": ["pointId"]
     },
     "point.remove": {
       "category": "utility",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "pointId"
-      ]
+      "required": ["pointId"]
     },
     "point.clear_session": {
       "category": "utility",
@@ -2300,18 +1846,13 @@
       "category": "utility",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "pointId",
-        "prefab"
-      ]
+      "required": ["pointId", "prefab"]
     },
     "faction.set": {
       "category": "team",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "teamId"
-      ]
+      "required": ["teamId"]
     },
     "faction.clear": {
       "category": "team",
@@ -2322,7 +1863,7 @@
       "category": "utility",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "notes": "Consumes one charge per prevented death. Parameters: initialCharges, activeWindowSeconds, triggerCooldownSeconds, onTriggeredSequenceId."
+      "notes": "Consumes one charge per prevented death."
     },
     "death.allow": {
       "category": "utility",
@@ -2396,7 +1937,7 @@
       "aliases": ["add clan task", "create clan activity", "assign clan objective"],
       "required": ["taskId", "description", "objectiveType", "targetAmount"],
       "optional": ["clanId", "assigneeSteamId", "assignee", "scope", "eventId", "sessionId", "itemPrefab", "bossPrefab", "prefab", "prefabGuid", "expiresAt", "rewardPoints"],
-      "description": "Creates a persistent world or event clan task. Player assignment uses stable Steam IDs."
+      "description": "Creates a persistent world or event clan task."
     },
     "clan.task.update": {
       "category": "clan",
@@ -2410,7 +1951,7 @@
       "riskLevel": "controlled",
       "requiresApproval": true,
       "required": ["taskId", "amount"],
-      "description": "Adds trusted admin progress to an active clan task. Generic inventory transfers never call this automatically."
+      "description": "Adds trusted admin progress to an active clan task."
     },
     "clan.task.cancel": {
       "category": "clan",
@@ -2435,102 +1976,75 @@
       "riskLevel": "controlled",
       "requiresApproval": false,
       "required": ["taskId", "rewardPoints"],
-      "description": "Internal completion action that dispatches the configured reward through the catalog-backed score action."
+      "description": "Internal completion action that dispatches the configured reward."
     },
     "sequence.play": {
       "category": "glow_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "sequencePrefab"
-      ]
+      "required": ["sequencePrefab"]
     },
     "sequence.persist": {
       "category": "glow_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "sequencePrefab"
-      ]
+      "required": ["sequencePrefab"]
     },
     "sequence.stop": {
       "category": "glow_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "sequencePrefab"
-      ]
+      "required": ["sequencePrefab"]
     },
     "sequence.step.execute": {
       "category": "custom_sequence",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "sequenceId",
-        "stepId"
-      ]
+      "required": ["sequenceId", "stepId"]
     },
     "blood.set": {
       "category": "blood",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set blood"
-      ],
-      "required": [
-        "bloodType"
-      ]
+      "aliases": ["set blood"],
+      "required": ["bloodType"]
     },
     "set_blood": {
       "category": "blood",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "set blood"
-      ],
-      "required": [
-        "bloodType"
-      ]
+      "aliases": ["set blood"],
+      "required": ["bloodType"]
     },
     "buff.apply": {
       "category": "buffs",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "buff"
-      ]
+      "required": ["buff"]
     },
     "buff.remove": {
       "category": "buffs",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "buff"
-      ]
+      "required": ["buff"]
     },
     "player.buff.apply": {
       "category": "buffs",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "buffPrefab"
-      ]
+      "required": ["buffPrefab"]
     },
     "player.buff.remove": {
       "category": "buffs",
       "riskLevel": "safe",
       "requiresApproval": false,
-      "required": [
-        "buffPrefab"
-      ]
+      "required": ["buffPrefab"]
     },
     "npc.stay": {
       "category": "npc_control",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "aliases": [
-        "guard position"
-      ]
+      "aliases": ["guard position"]
     },
     "chest.spawn": {
       "category": "prefab",
@@ -2576,9 +2090,7 @@
       "category": "ai",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "prefab"
-      ]
+      "required": ["prefab"]
     },
     "auto.fly": {
       "category": "utility",
@@ -2604,9 +2116,7 @@
       "category": "pvp",
       "riskLevel": "controlled",
       "requiresApproval": true,
-      "required": [
-        "maxGearLevel"
-      ]
+      "required": ["maxGearLevel"]
     },
     "equip.unrestrict": {
       "category": "pvp",
@@ -2617,36 +2127,939 @@
       "category": "visual",
       "riskLevel": "safe",
       "requiresApproval": false
+    },
+    "companion.assign": {
+      "category": "companion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["assign companion", "set follower", "assign servant"],
+      "required": ["entityId", "ownerSteamId"],
+      "optional": ["role", "persist"],
+      "description": "Assign an already-controlled NPC to a player as a companion."
+    },
+    "companion.follow": {
+      "category": "companion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["companion follow", "follower follow"],
+      "required": ["entityId", "targetSteamId"],
+      "optional": ["distance", "teleportCatchupDistance", "combatEnabled"],
+      "description": "Command a companion to follow a player."
+    },
+    "companion.guard": {
+      "category": "companion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["companion guard", "follower guard"],
+      "required": ["entityId", "center"],
+      "optional": ["radius", "aggroMode", "returnToCenter"],
+      "description": "Command a companion to guard a position."
+    },
+    "companion.dismiss": {
+      "category": "companion",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["dismiss companion", "release follower"],
+      "required": ["entityId"],
+      "description": "Unassign a companion without destroying the NPC."
+    },
+    "companion.despawn": {
+      "category": "companion",
+      "riskLevel": "destructive",
+      "requiresApproval": true,
+      "aliases": ["despawn companion", "remove follower"],
+      "required": ["entityId"],
+      "description": "Destroy a BattleLuck-owned companion and remove persistent tracking."
+    },
+    "companion.behavior.set": {
+      "category": "companion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set companion behavior", "companion mode"],
+      "required": ["entityId", "behavior"],
+      "optional": ["radius", "target", "combatEnabled"],
+      "description": "Set companion behavior: follow, guard, patrol, wander, flee, or assist."
+    },
+    "companion.limit.set": {
+      "category": "companion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set companion limit", "max followers"],
+      "required": ["scope", "maximum"],
+      "optional": ["overflowPolicy"],
+      "description": "Set per-player, per-clan, or per-event companion limits."
+    },
+    "creature.capture.validate": {
+      "category": "creature",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["validate capture", "check capture eligibility"],
+      "required": ["targetEntity"],
+      "optional": ["allowVBlood", "allowedCategories", "minimumBloodQuality", "maximumLevel"],
+      "description": "Read-only validation of creature capture eligibility."
+    },
+    "creature.capture.apply": {
+      "category": "creature",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["capture creature", "dominate creature"],
+      "required": ["targetEntity", "ownerSteamId"],
+      "optional": ["destination", "convertToPrisoner", "preserveBlood"],
+      "description": "Capture a creature and convert it to a prisoner or servant."
+    },
+    "creature.capture.release": {
+      "category": "creature",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["release creature", "free captured"],
+      "required": ["targetEntity"],
+      "description": "Release or restore a captured entity."
+    },
+    "creature.blood.threshold.set": {
+      "category": "creature",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set blood threshold", "capture quality filter"],
+      "optional": ["minimumQuality", "maximumQuality", "category"],
+      "description": "Set blood quality thresholds for creature capture."
+    },
+    "encounter.spawn": {
+      "category": "encounter",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn encounter", "create encounter group"],
+      "required": ["encounterId", "sessionId", "center"],
+      "optional": ["faction", "prefabs", "count", "formation", "despawnSeconds"],
+      "description": "Spawn a tracked encounter group through the unified NPC pipeline."
+    },
+    "encounter.named_unit.spawn": {
+      "category": "encounter",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn named unit", "spawn elite encounter"],
+      "required": ["prefab"],
+      "optional": ["displayName", "levelPolicy", "behavior", "rewardTable"],
+      "description": "Spawn a named encounter unit with custom display name and behavior."
+    },
+    "encounter.random.select": {
+      "category": "encounter",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["select random encounter", "pick encounter"],
+      "required": ["tableId"],
+      "optional": ["seed", "playerCount", "averageGearLevel", "zone"],
+      "description": "Deterministic random encounter selection from a table."
+    },
+    "encounter.wave.start": {
+      "category": "encounter",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["start encounter wave", "begin wave"],
+      "required": ["waveSetId", "waveNumber"],
+      "optional": ["intervalSeconds", "scaleByPlayers"],
+      "description": "Start a timed encounter wave sequence."
+    },
+    "encounter.wave.stop": {
+      "category": "encounter",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["stop encounter wave", "end wave"],
+      "description": "Stop the current encounter wave."
+    },
+    "encounter.reward.grant": {
+      "category": "encounter",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["grant encounter reward", "reward encounter"],
+      "required": ["rewardTableId"],
+      "optional": ["recipients", "rolls"],
+      "description": "Grant rewards for an encounter."
+    },
+    "encounter.cleanup": {
+      "category": "encounter",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["cleanup encounter", "remove encounter entities"],
+      "description": "Remove all entities tracked under the current encounter/session ID."
+    },
+    "invasion.prepare": {
+      "category": "invasion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["prepare invasion", "setup castle raid"],
+      "required": ["invasionId", "castleHeart"],
+      "optional": ["faction", "warningSeconds", "durationSeconds", "difficultyProfile"],
+      "description": "Prepare a castle invasion session without spawning enemies."
+    },
+    "invasion.start": {
+      "category": "invasion",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["start invasion", "begin castle raid"],
+      "required": ["invasionId", "castleHeart"],
+      "optional": ["ownerSteamId", "spawnPoints", "waveSetId"],
+      "description": "Start a castle invasion with wave-based enemy spawns."
+    },
+    "invasion.scale": {
+      "category": "invasion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["scale invasion", "adjust invasion difficulty"],
+      "required": ["invasionId"],
+      "optional": ["playerCount", "averageGearLevel", "highestVBloodDefeated", "healthMultiplier", "powerMultiplier"],
+      "description": "Scale invasion difficulty based on player progression."
+    },
+    "invasion.wave.spawn": {
+      "category": "invasion",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn invasion wave", "invasion wave"],
+      "required": ["invasionId", "waveNumber"],
+      "optional": ["formation", "entryMarker", "targetPolicy"],
+      "description": "Spawn a specific wave during a castle invasion."
+    },
+    "invasion.target.set": {
+      "category": "invasion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set invasion target", "invasion focus"],
+      "required": ["target"],
+      "optional": ["structureDamageAllowed"],
+      "description": "Set the target priority for invasion units."
+    },
+    "invasion.end": {
+      "category": "invasion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["end invasion", "finish castle raid"],
+      "required": ["result"],
+      "optional": ["rewardTableId", "cleanupDelay"],
+      "description": "End a castle invasion with victory, defeat, or timeout result."
+    },
+    "invasion.cancel": {
+      "category": "invasion",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["cancel invasion", "abort castle raid"],
+      "description": "Cancel an invasion without victory rewards."
+    },
+    "portal.create": {
+      "category": "portal",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["create portal", "make teleport gate"],
+      "required": ["portalId", "sourceMarker", "destinationMarker"],
+      "optional": ["visualPrefab", "interactionRadius", "accessPolicy"],
+      "description": "Create a teleport portal between two markers."
+    },
+    "portal.enable": {
+      "category": "portal",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["enable portal", "activate portal"],
+      "required": ["portalId"],
+      "description": "Enable a portal for use."
+    },
+    "portal.disable": {
+      "category": "portal",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["disable portal", "deactivate portal"],
+      "required": ["portalId"],
+      "description": "Disable a portal."
+    },
+    "portal.teleport": {
+      "category": "portal",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["portal teleport", "use portal"],
+      "required": ["portalId", "steamId"],
+      "optional": ["preserveVelocity", "requireOutOfCombat"],
+      "description": "Teleport a player through a portal."
+    },
+    "portal.return.bind": {
+      "category": "portal",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["bind return point", "set recall"],
+      "required": ["portalId"],
+      "description": "Store the player's return point for the current event run."
+    },
+    "portal.return.execute": {
+      "category": "portal",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["return to portal", "recall"],
+      "required": ["portalId"],
+      "description": "Teleport the player back to their bound return point."
+    },
+    "dungeon.session.create": {
+      "category": "dungeon",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["create dungeon", "start dungeon session"],
+      "required": ["eventId", "templateId", "zoneHash"],
+      "optional": ["partyMembers", "seed", "difficulty"],
+      "description": "Create a managed dungeon session within the existing world."
+    },
+    "dungeon.layout.load": {
+      "category": "dungeon",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["load dungeon layout", "load dungeon schematic"],
+      "required": ["sessionId", "schematicId"],
+      "optional": ["rotation", "trackingGroup"],
+      "description": "Load a dungeon room layout from a schematic."
+    },
+    "dungeon.room.activate": {
+      "category": "dungeon",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["activate dungeon room", "enable room encounter"],
+      "required": ["sessionId", "roomId"],
+      "optional": ["encounterId", "lockExits"],
+      "description": "Activate a dungeon room with its encounter."
+    },
+    "dungeon.boss.spawn": {
+      "category": "dungeon",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn dungeon boss", "dungeon boss"],
+      "required": ["sessionId", "bossPrefab"],
+      "optional": ["marker", "scalingProfile"],
+      "description": "Spawn a dungeon boss through the unified spawn pipeline."
+    },
+    "dungeon.complete": {
+      "category": "dungeon",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["complete dungeon", "finish dungeon"],
+      "required": ["sessionId", "result"],
+      "optional": ["rewardTable", "returnPlayers"],
+      "description": "Complete a dungeon session with rewards."
+    },
+    "dungeon.abort": {
+      "category": "dungeon",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["abort dungeon", "cancel dungeon"],
+      "required": ["sessionId"],
+      "description": "Abort a dungeon session and clean up all tracked entities."
+    },
+    "boss.spawn.policy.set": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set boss spawn policy", "boss spawn rule"],
+      "required": ["scope", "enabled"],
+      "optional": ["durationSeconds", "reason"],
+      "description": "Control future boss spawn permission by scope."
+    },
+    "boss.spawn.suppress": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["suppress boss spawn", "block boss"],
+      "required": ["scope"],
+      "optional": ["prefab", "durationSeconds"],
+      "description": "Temporarily suppress boss spawns by scope."
+    },
+    "boss.spawn.restore": {
+      "category": "boss",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["restore boss spawn", "unblock boss"],
+      "description": "Restore normal boss spawn behavior."
+    },
+    "boss.scale.apply": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["scale boss", "adjust boss difficulty"],
+      "required": ["entityId"],
+      "optional": ["playerCount", "healthPerAdditionalPlayer", "powerPerAdditionalPlayer", "levelPerAdditionalPlayer", "maximumPlayersCounted"],
+      "description": "Scale a boss's stats based on player count."
+    },
+    "boss.scale.refresh": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["refresh boss scaling", "recalculate boss"],
+      "required": ["entityId"],
+      "description": "Recalculate boss scaling when active attacker count changes."
+    },
+    "boss.scale.reset": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["reset boss scaling", "restore boss stats"],
+      "required": ["entityId"],
+      "description": "Restore a boss's original stats from captured baseline."
+    },
+    "boss.reward.eligibility.set": {
+      "category": "boss",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set boss reward eligibility", "boss reward rule"],
+      "optional": ["maximumRecipients", "eligibility"],
+      "description": "Set boss reward eligibility rules."
+    },
+    "boss.unlock.policy.set": {
+      "category": "boss",
+      "riskLevel": "critical",
+      "requiresApproval": true,
+      "aliases": ["set boss unlock policy", "vblood unlock rule"],
+      "optional": ["maximumUnlockRecipients", "selectionPolicy"],
+      "description": "Set V Blood unlock policy separate from combat scaling."
+    },
+    "lane.define": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["define lane", "create moba lane"],
+      "required": ["laneId", "team", "waypoints"],
+      "optional": ["width"],
+      "description": "Define a MOBA lane with waypoints. Configuration action, not a direct world mutation."
+    },
+    "lane.wave.spawn": {
+      "category": "moba",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn lane wave", "moba minion wave"],
+      "required": ["sessionId", "laneId", "team", "waveDefinition"],
+      "optional": ["formation"],
+      "description": "Spawn a minion wave on a MOBA lane."
+    },
+    "lane.unit.advance": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["advance lane unit", "move minion"],
+      "required": ["entityId", "laneId"],
+      "optional": ["waypointIndex", "aggroRadius"],
+      "description": "Command a lane unit to advance along its waypoint path."
+    },
+    "lane.tower.spawn": {
+      "category": "moba",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["spawn lane tower", "moba tower"],
+      "required": ["sessionId", "team", "marker"],
+      "optional": ["prefab", "attackRadius", "invulnerableUntil"],
+      "description": "Spawn a defensive tower on a MOBA lane."
+    },
+    "lane.tower.enable": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["enable tower", "activate tower"],
+      "required": ["towerId"],
+      "description": "Enable a lane tower."
+    },
+    "lane.tower.disable": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["disable tower", "deactivate tower"],
+      "required": ["towerId"],
+      "description": "Disable a lane tower."
+    },
+    "lane.structure.damage": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["damage lane structure", "attack structure"],
+      "required": ["structureId", "damage"],
+      "description": "Apply controlled damage to a lane structure."
+    },
+    "match.currency.grant": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["grant match currency", "give gold"],
+      "required": ["sessionId", "steamId", "currencyId", "amount"],
+      "optional": ["reason"],
+      "description": "Grant event-local virtual currency to a player."
+    },
+    "match.currency.spend": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["spend match currency", "buy item"],
+      "required": ["sessionId", "steamId", "currencyId", "amount"],
+      "description": "Atomic validation and deduction of event-local currency."
+    },
+    "match.upgrade.purchase": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["purchase upgrade", "buy moba upgrade"],
+      "required": ["sessionId", "steamId", "upgradeId", "cost"],
+      "description": "Purchase a MOBA match upgrade."
+    },
+    "match.form.policy.set": {
+      "category": "moba",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set form policy", "moba form rules"],
+      "optional": ["allowedForms", "blockedForms"],
+      "description": "Set allowed and blocked forms for a MOBA match."
+    },
+    "match.recall": {
+      "category": "moba",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["recall player", "moba recall"],
+      "required": ["sessionId", "steamId"],
+      "description": "Return a player to their team base after a channel time."
+    },
+    "world.weather.set": {
+      "category": "world",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set weather", "change weather"],
+      "required": ["weatherId"],
+      "optional": ["transitionSeconds", "durationSeconds", "restorePrevious"],
+      "description": "Set the world weather with optional transition and duration."
+    },
+    "world.weather.restore": {
+      "category": "world",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["restore weather", "reset weather"],
+      "description": "Restore the previous weather state."
+    },
+    "world.time.advance": {
+      "category": "world",
+      "riskLevel": "critical",
+      "requiresApproval": true,
+      "aliases": ["advance time", "fast forward time"],
+      "required": ["hours"],
+      "optional": ["adminApprovalRequired"],
+      "description": "Advance world time. Affects the entire server."
+    },
+    "world.time.set": {
+      "category": "world",
+      "riskLevel": "critical",
+      "requiresApproval": true,
+      "aliases": ["set time", "change time of day"],
+      "required": ["hour"],
+      "optional": ["minute"],
+      "description": "Set the world time to a specific hour/minute."
+    },
+    "sunlight.damage.scale": {
+      "category": "world",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["scale sun damage", "adjust sunlight"],
+      "required": ["multiplier"],
+      "optional": ["zoneHash", "durationSeconds"],
+      "description": "Scale sunlight damage by a multiplier."
+    },
+    "sunlight.rule.set": {
+      "category": "world",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set sun rule", "sunlight mode"],
+      "required": ["mode"],
+      "optional": ["zoneHash", "eventOnly"],
+      "description": "Set sunlight rules: normal, disabled, or lethal."
+    },
+    "player.revive.duration.set": {
+      "category": "player",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set revive time", "change respawn duration"],
+      "required": ["steamId", "seconds"],
+      "optional": ["scope", "durationSeconds"],
+      "description": "Set the revive/respawn duration for a player."
+    },
+    "player.revive.duration.reset": {
+      "category": "player",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["reset revive time", "restore respawn"],
+      "required": ["steamId"],
+      "description": "Reset a player's revive duration to default."
+    },
+    "player.movement.modifier.apply": {
+      "category": "player",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["apply speed buff", "modify movement speed"],
+      "required": ["steamId", "multiplier"],
+      "optional": ["condition", "durationSeconds"],
+      "description": "Apply a movement speed modifier to a player."
+    },
+    "player.movement.modifier.remove": {
+      "category": "player",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["remove speed buff", "reset movement speed"],
+      "required": ["steamId"],
+      "description": "Remove a movement speed modifier from a player."
+    },
+    "zone.movement.modifier.set": {
+      "category": "zone",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["zone speed modifier", "area movement buff"],
+      "required": ["zoneHash", "multiplier"],
+      "optional": ["requireOutOfCombat"],
+      "description": "Set a movement speed modifier for all players in a zone."
+    },
+    "ability.cooldown.multiplier.apply": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["cooldown modifier", "reduce cooldowns"],
+      "required": ["steamId", "multiplier"],
+      "optional": ["abilityGroup", "durationSeconds"],
+      "description": "Apply a cooldown multiplier to a player's abilities."
+    },
+    "ability.cooldown.multiplier.reset": {
+      "category": "ability",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["reset cooldowns", "restore cooldown"],
+      "required": ["steamId"],
+      "description": "Reset ability cooldown multipliers for a player."
+    },
+    "ability.loadout.capture": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["capture loadout", "save ability setup"],
+      "required": ["steamId", "loadoutId"],
+      "optional": ["weaponType"],
+      "description": "Capture a player's current ability loadout."
+    },
+    "ability.loadout.apply": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["apply loadout", "load ability setup"],
+      "required": ["steamId", "loadoutId"],
+      "optional": ["respectCooldowns"],
+      "description": "Apply a saved ability loadout to a player."
+    },
+    "ability.loadout.bind_weapon": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["bind loadout to weapon", "weapon loadout link"],
+      "required": ["steamId", "weaponType", "loadoutId"],
+      "description": "Bind a loadout to a specific weapon type."
+    },
+    "ability.loadout.unbind_weapon": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["unbind loadout", "remove weapon link"],
+      "required": ["steamId", "weaponType"],
+      "description": "Unbind a loadout from a weapon type."
+    },
+    "ability.slot.policy.set": {
+      "category": "ability",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["set slot policy", "ability slot rules"],
+      "optional": ["normalSlots", "ultimateSlots", "dashSlots", "allowCrossCategory"],
+      "description": "Set ability slot policies for a player or event."
+    },
+    "ability.swap.policy.set": {
+      "category": "ability",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set swap policy", "ability swap rules"],
+      "optional": ["allowInCombat", "preserveCooldowns"],
+      "description": "Set ability swap policies."
+    },
+    "equipment.template.create": {
+      "category": "equipment",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["create equipment template", "make custom item"],
+      "required": ["templateId", "basePrefab"],
+      "optional": ["gearLevel", "abilityGroups", "statModifiers", "appearancePrefab"],
+      "description": "Create a custom equipment template. Configuration action requiring approval."
+    },
+    "equipment.template.validate": {
+      "category": "equipment",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["validate template", "check equipment"],
+      "required": ["templateId"],
+      "description": "Validate an equipment template without applying it."
+    },
+    "equipment.template.grant": {
+      "category": "equipment",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["grant template item", "give custom equipment"],
+      "required": ["templateId", "steamId"],
+      "optional": ["amount", "temporary"],
+      "description": "Grant a custom equipment item to a player."
+    },
+    "equipment.appearance.set": {
+      "category": "equipment",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set appearance", "change item look"],
+      "required": ["steamId", "slot", "appearancePrefab"],
+      "optional": ["hide"],
+      "description": "Set equipment appearance. Client-visible; requires replication."
+    },
+    "equipment.appearance.reset": {
+      "category": "equipment",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["reset appearance", "restore item look"],
+      "required": ["steamId", "slot"],
+      "description": "Reset equipment appearance to default."
+    },
+    "object.place": {
+      "category": "building",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["place object", "spawn building piece"],
+      "required": ["prefab", "position"],
+      "optional": ["rotation", "ownerSteamId", "sessionId", "trackingGroup", "safetyMode"],
+      "description": "Place a tracked world object."
+    },
+    "object.remove": {
+      "category": "building",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["remove object", "delete building piece"],
+      "required": ["objectId"],
+      "optional": ["trackingGroup"],
+      "description": "Remove a tracked world object."
+    },
+    "object.variant.set": {
+      "category": "building",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set object variant", "change building style"],
+      "required": ["objectId", "variantPrefab"],
+      "optional": ["preserveOwnership"],
+      "description": "Change a placed object's variant prefab."
+    },
+    "schematic.capture": {
+      "category": "building",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["capture schematic", "save building design"],
+      "required": ["schematicId", "origin"],
+      "optional": ["radius"],
+      "description": "Capture a schematic from existing world objects."
+    },
+    "structure.railing.remove": {
+      "category": "building",
+      "riskLevel": "high",
+      "requiresApproval": true,
+      "aliases": ["remove railing", "delete railing"],
+      "required": ["filterCategory", "target"],
+      "description": "Remove railings from a structure. Implemented as object.remove with filter."
+    },
+    "structure.fade.policy.set": {
+      "category": "building",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set fade policy", "structure visibility"],
+      "required": ["mode"],
+      "optional": ["zoneHash"],
+      "description": "Set structure fade policy. Client-render feature; requires client bridge."
+    },
+    "servant.hunt.snapshot": {
+      "category": "servant",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["snapshot servant hunt", "capture hunt state"],
+      "required": ["ownerSteamId"],
+      "description": "Capture the latest valid hunt assignment for repeat."
+    },
+    "servant.hunt.repeat": {
+      "category": "servant",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["repeat servant hunt", "reassign hunt"],
+      "required": ["ownerSteamId"],
+      "optional": ["servantIds", "selection", "excludedServantIds"],
+      "description": "Repeat the last servant hunt with selection controls."
+    },
+    "servant.hunt.assign": {
+      "category": "servant",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["assign servant hunt", "send servant"],
+      "required": ["servantId", "huntId"],
+      "optional": ["durationPolicy"],
+      "description": "Assign a servant to a hunt mission."
+    },
+    "servant.hunt.cancel": {
+      "category": "servant",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["cancel servant hunt", "recall servant"],
+      "required": ["servantId"],
+      "description": "Cancel a servant's hunt mission."
+    },
+    "servant.hunt.validate": {
+      "category": "servant",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["validate servant hunt", "check hunt eligibility"],
+      "required": ["servantId"],
+      "description": "Validate servant availability, castle ownership, and hunt destination."
+    },
+    "item.durability.restore": {
+      "category": "item",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["restore durability", "repair item"],
+      "required": ["itemEntity"],
+      "optional": ["amount", "maximum"],
+      "description": "Restore durability to an item."
+    },
+    "item.durability.regeneration.set": {
+      "category": "item",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set durability regen", "auto repair"],
+      "required": ["containerCategory", "itemCategory", "amountPerTick", "tickSeconds"],
+      "optional": ["requireStored"],
+      "description": "Set durability regeneration for items in a container category."
+    },
+    "item.durability.regeneration.remove": {
+      "category": "item",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["remove durability regen", "stop auto repair"],
+      "required": ["containerCategory", "itemCategory"],
+      "description": "Remove durability regeneration for a container category."
+    },
+    "container.item.rule.set": {
+      "category": "item",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set container rule", "container filter"],
+      "required": ["containerId", "itemFilter", "effect"],
+      "description": "Set a rule for items in a container."
+    },
+    "crafting.mastery.progress.add": {
+      "category": "crafting",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["add crafting xp", "crafting mastery progress"],
+      "required": ["steamId", "craftingCategory", "experience"],
+      "description": "Add experience to a crafting mastery category."
+    },
+    "crafting.mastery.bonus.set": {
+      "category": "crafting",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["set mastery bonus", "crafting perk"],
+      "required": ["category"],
+      "optional": ["ingredientReduction", "bonusItemChance", "qualityUpgradeChance"],
+      "description": "Set crafting mastery bonuses for a category."
+    },
+    "crafting.result.modify": {
+      "category": "crafting",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["modify craft result", "alter crafting output"],
+      "required": ["steamId"],
+      "description": "Runtime hook action called after a verified craft result."
+    },
+    "mastery.perk.unlock": {
+      "category": "mastery",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["unlock mastery perk", "learn perk"],
+      "required": ["steamId", "treeId", "perkId"],
+      "description": "Unlock a mastery perk for a player."
+    },
+    "mastery.perk.reset": {
+      "category": "mastery",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["reset mastery perks", "respec perks"],
+      "required": ["steamId", "treeId"],
+      "description": "Reset all mastery perks in a tree."
+    },
+    "player.chat.mute": {
+      "category": "admin",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["mute player", "silence player"],
+      "required": ["steamId", "durationSeconds", "reason"],
+      "optional": ["scope"],
+      "description": "Mute a player in chat."
+    },
+    "player.chat.unmute": {
+      "category": "admin",
+      "riskLevel": "safe",
+      "requiresApproval": false,
+      "aliases": ["unmute player", "unsilence"],
+      "required": ["steamId"],
+      "description": "Unmute a player in chat."
+    },
+    "player.afk.evaluate": {
+      "category": "admin",
+      "riskLevel": "read_only",
+      "requiresApproval": false,
+      "aliases": ["check afk", "evaluate idle"],
+      "required": ["steamId"],
+      "description": "Evaluate if a player is AFK."
+    },
+    "player.afk.remove": {
+      "category": "admin",
+      "riskLevel": "controlled",
+      "requiresApproval": true,
+      "aliases": ["remove afk player", "kick idle"],
+      "required": ["steamId"],
+      "optional": ["minimumIdleSeconds", "saveBeforeKick"],
+      "description": "Remove an AFK player from the server."
+    },
+    "siege.policy.set": {
+      "category": "admin",
+      "riskLevel": "critical",
+      "requiresApproval": true,
+      "aliases": ["set siege policy", "toggle siege"],
+      "required": ["scope", "enabled"],
+      "optional": ["durationSeconds"],
+      "description": "Set siege policy for a player, clan, zone, or server."
+    },
+    "castle.raidability.set": {
+      "category": "admin",
+      "riskLevel": "critical",
+      "requiresApproval": true,
+      "aliases": ["set castle raidability", "castle raid rule"],
+      "required": ["castleHeart", "raidable"],
+      "optional": ["condition"],
+      "description": "Set whether a castle can be raided."
     }
   },
   "actions": [
     {
       "actionId": "announce_start",
       "action": "announce",
-      "params": {
-        "title": "Bloodbath",
-        "message": "Fight!"
-      },
+      "params": {"title": "Bloodbath", "message": "Fight!"},
       "category": "notification",
       "riskLevel": "safe"
     },
     {
       "actionId": "spawn_wave_1",
       "action": "spawn.wave",
-      "params": {
-        "waveId": 1,
-        "count": 5
-      },
+      "params": {"waveId": 1, "count": 5},
       "category": "spawn",
       "riskLevel": "controlled"
     },
     {
       "actionId": "glow_red",
       "action": "glow.enable",
-      "params": {
-        "color": "#FF0000",
-        "duration": 10
-      },
+      "params": {"color": "#FF0000", "duration": 10},
       "category": "visual",
       "riskLevel": "safe"
     }
@@ -2657,21 +3070,9 @@
       "name": "Bloodbath Intro",
       "description": "Standard intro sequence for Bloodbath mode.",
       "steps": [
-        {
-          "id": "announce_start",
-          "actionId": "announce_start",
-          "delaySeconds": 0
-        },
-        {
-          "id": "glow_red",
-          "actionId": "glow_red",
-          "delaySeconds": 3
-        },
-        {
-          "id": "wave_1",
-          "actionId": "spawn_wave_1",
-          "delaySeconds": 5
-        }
+        {"id": "announce_start", "actionId": "announce_start", "delaySeconds": 0},
+        {"id": "glow_red", "actionId": "glow_red", "delaySeconds": 3},
+        {"id": "wave_1", "actionId": "spawn_wave_1", "delaySeconds": 5}
       ]
     }
   ],

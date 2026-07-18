@@ -29,6 +29,9 @@ public sealed class ProjectMEventRouter
 {
 private static ProjectMEventRouter? _instance;
 private static readonly object _initLock = new();
+private const int MaxTrackedDeathEvents = 4096;
+private readonly HashSet<Entity> _processedDeathEvents = new();
+private readonly Queue<Entity> _processedDeathEventOrder = new();
 /// <summary>Singleton accessor. Null until <see cref="Initialize"/> runs.</summary>
 public static ProjectMEventRouter? Instance => _instance;
 /// <summary>True once <see cref="Initialize"/> has been called.</summary>
@@ -92,6 +95,8 @@ _instance.OnCastleFloorWalls = null;
 _instance.OnAiGroupProjectMTick = null;
 _instance.OnBattleLuckServerTick = null;
 _instance.OnProjectMRuntimeTick = null;
+_instance._processedDeathEvents.Clear();
+_instance._processedDeathEventOrder.Clear();
 _instance.IsInitialized = false;
 _instance = null;
 }
@@ -147,7 +152,23 @@ public event Action<ProjectMRuntimeTickEvent>? OnProjectMRuntimeTick;
 // Called by Patches/ProjectMEventRouterPatches.cs. We never log from these
 // paths — a throwing subscriber must not break the patch chain. The patch
 // wrappers log on their own; this layer is silent.
-internal void RaisePlayerDeath(PlayerDeathEvent e) => SafeInvoke(OnPlayerDeath, e);
+internal void RaisePlayerDeath(Entity eventEntity, PlayerDeathEvent e)
+{
+    // DeathEventListenerSystem queries can retain the same event entity across
+    // more than one update. Deduplicate by the ECS event identity rather than
+    // by victim/time, so two legitimate rapid deaths are never collapsed.
+    if (eventEntity != Entity.Null)
+    {
+        if (!_processedDeathEvents.Add(eventEntity))
+            return;
+
+        _processedDeathEventOrder.Enqueue(eventEntity);
+        while (_processedDeathEventOrder.Count > MaxTrackedDeathEvents)
+            _processedDeathEvents.Remove(_processedDeathEventOrder.Dequeue());
+    }
+
+    SafeInvoke(OnPlayerDeath, e);
+}
 internal void RaiseDamageDealt(DamageDealtEvent e) => SafeInvoke(OnDamageDealt, e);
 internal void RaiseKill(BattleLuck.ECS.Events.KillEvent e) => SafeInvoke(OnKill, e);
 internal void RaiseDeathReaction(DeathReactionEvent e) => SafeInvoke(OnDeathReaction, e);
@@ -180,11 +201,14 @@ internal void RaiseBattleLuckServerTick(BattleLuckServerTickEvent e) => SafeInvo
 internal void RaiseProjectMRuntimeTick(ProjectMRuntimeTickEvent e) => SafeInvoke(OnProjectMRuntimeTick, e);
 static void SafeInvoke<T>(Action<T>? handler, T arg)
 {
-if (handler == null) return;
-try { handler.Invoke(arg); }
-catch (Exception ex)
-{
-BattleLuckPlugin.LogWarning($"[ProjectMEventRouter] Subscriber threw on {typeof(T).Name}: {ex.Message}");
-}
+    if (handler == null) return;
+    foreach (Action<T> subscriber in handler.GetInvocationList())
+    {
+        try { subscriber.Invoke(arg); }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[ProjectMEventRouter] Subscriber threw on {typeof(T).Name}: {ex.Message}");
+        }
+    }
 }
 }

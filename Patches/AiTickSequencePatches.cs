@@ -10,11 +10,11 @@ namespace BattleLuck.Patches;
 /// Read-only hooks for AI planning telemetry. The hooks do not execute actions;
 /// event/runtime work remains queued through the normal server tick boundary.
 /// </summary>
-[HarmonyPatch]
+// [HarmonyPatch]
 internal static class AiTickSequencePatches
 {
-    [HarmonyPatch(typeof(CreateGameplayEventOnTickSystem), nameof(CreateGameplayEventOnTickSystem.OnUpdate))]
-    [HarmonyPostfix]
+    // [HarmonyPatch(typeof(CreateGameplayEventOnTickSystem), nameof(CreateGameplayEventOnTickSystem.OnUpdate))]
+    // [HarmonyPostfix]
     static void CreateGameplayEventOnTickSystem_OnUpdate()
     {
         if (!VRisingCore.IsReady)
@@ -26,8 +26,8 @@ internal static class AiTickSequencePatches
                 DateTime.UtcNow));
     }
 
-    [HarmonyPatch(typeof(SequencerUpdateGroup), nameof(SequencerUpdateGroup.OnUpdate))]
-    [HarmonyPostfix]
+    // [HarmonyPatch(typeof(SequencerUpdateGroup), nameof(SequencerUpdateGroup.OnUpdate))]
+    // [HarmonyPostfix]
     static void SequencerUpdateGroup_OnUpdate()
     {
         if (!VRisingCore.IsReady)

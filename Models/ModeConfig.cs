@@ -9,11 +9,21 @@
 /// </summary>
 public sealed class ModeConfig
 {
+    /// <summary>
+    /// Event definition identifier. Historically named ModeId for compatibility.
+    /// </summary>
     public string ModeId { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public string Description { get; set; } = "";
     public int Version { get; set; } = 1;
     public string KitId { get; set; } = "";
+
+    /// <summary>
+    /// Unified event definitions use SessionController's built-in snapshot,
+    /// kit, team, teleport, death, and restore lifecycle when explicit legacy
+    /// enter/exit flows are absent.
+    /// </summary>
+    public bool UsesManagedPlayerLifecycle { get; set; }
 
     public SessionConfig Session { get; set; } = new();
     public RulesConfig Rules { get; set; } = new();

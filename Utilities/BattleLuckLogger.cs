@@ -28,18 +28,29 @@ public static class BattleLuckLogger
 
     /// <summary>Set once after config loads. Pass null to disable Discord forwarding.</summary>
     public static void SetDiscordWebhook(string? url)
-        => _webhookUrl = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+    {
+        if (string.IsNullOrWhiteSpace(url) ||
+            !System.Uri.TryCreate(url.Trim(), System.UriKind.Absolute, out var uri) ||
+            (uri.Scheme != System.Uri.UriSchemeHttp && uri.Scheme != System.Uri.UriSchemeHttps) ||
+            string.IsNullOrWhiteSpace(uri.Host))
+        {
+            _webhookUrl = null;
+            return;
+        }
 
-    public static void Info(string message)     { BattleLuckPlugin.LogInfo(message);                    Post("INFO",     message); }
-    public static void Warning(string message)  { BattleLuckPlugin.LogWarning(message);                 Post("WARNING",  message); }
-    public static void Error(string message)    { BattleLuckPlugin.LogError(message);                   Post("ERROR",    message); }
-    public static void Log(string message)      { BattleLuckPlugin.LogInfo(message);                    Post("INFO",     message); }
-    public static void Critical(string message) { BattleLuckPlugin.LogError($"[CRITICAL] {message}");   Post("CRITICAL", message); }
+        _webhookUrl = uri.AbsoluteUri;
+    }
+
+    public static void Info(string message)     { BattleLuckPlugin.Log?.LogInfo(message);                    Post("INFO",     message); }
+    public static void Warning(string message)  { BattleLuckPlugin.Log?.LogWarning(message);                 Post("WARNING",  message); }
+    public static void Error(string message)    { BattleLuckPlugin.Log?.LogError(message);                   Post("ERROR",    message); }
+    public static void Log(string message)      { BattleLuckPlugin.Log?.LogInfo(message);                    Post("INFO",     message); }
+    public static void Critical(string message) { BattleLuckPlugin.Log?.LogError($"[CRITICAL] {message}");  Post("CRITICAL", message); }
 
     public static void Debug(string message)
     {
 #if DEBUG
-        BattleLuckPlugin.LogInfo($"[DEBUG] {message}");
+        BattleLuckPlugin.Log?.LogInfo($"[DEBUG] {message}");
         Post("DEBUG", message);
 #endif
     }
@@ -53,7 +64,7 @@ public static class BattleLuckLogger
     /// <param name="context">A labelled object describing the failure context (e.g. player, zone, action).</param>
     public static void ErrorWithContext(string message, object? context)
     {
-        BattleLuckPlugin.LogError(message);
+        BattleLuckPlugin.Log?.LogError(message);
         PostWithContext("ERROR", message, context);
     }
 
@@ -62,7 +73,7 @@ public static class BattleLuckLogger
     /// </summary>
     public static void WarningWithContext(string message, object? context)
     {
-        BattleLuckPlugin.LogWarning(message);
+        BattleLuckPlugin.Log?.LogWarning(message);
         PostWithContext("WARNING", message, context);
     }
 
@@ -73,7 +84,7 @@ public static class BattleLuckLogger
     public static void UserAction(string playerName, string action, string result)
     {
         var message = $"[UserAction] {playerName} → {action}: {result}";
-        BattleLuckPlugin.LogInfo(message);
+        BattleLuckPlugin.Log?.LogInfo(message);
         PostWithContext("INFO", $"User action: {action}", new { Player = playerName, Result = result });
     }
 
@@ -84,17 +95,21 @@ public static class BattleLuckLogger
 
     static void Post(string level, string message)
     {
-        if (_webhookUrl == null) return;
-        _ = System.Threading.Tasks.Task.Run(() => PostAsync(level, message, null));
+        // Capture the webhook URL on the calling thread to prevent a null-URI
+        // race when SetDiscordWebhook(null) runs concurrently on another thread.
+        var url = _webhookUrl;
+        if (url == null) return;
+        _ = System.Threading.Tasks.Task.Run(() => PostAsync(url, level, message, null));
     }
 
     static void PostWithContext(string level, string message, object? context)
     {
-        if (_webhookUrl == null) return;
-        _ = System.Threading.Tasks.Task.Run(() => PostAsync(level, message, context));
+        var url = _webhookUrl;
+        if (url == null) return;
+        _ = System.Threading.Tasks.Task.Run(() => PostAsync(url, level, message, context));
     }
 
-    static async System.Threading.Tasks.Task PostAsync(string level, string message, object? context)
+    static async System.Threading.Tasks.Task PostAsync(string webhookUrl, string level, string message, object? context)
     {
         try
         {
@@ -137,7 +152,7 @@ public static class BattleLuckLogger
 
             using var content = new System.Net.Http.StringContent(
                 payload, System.Text.Encoding.UTF8, "application/json");
-            await _http.PostAsync(_webhookUrl, content).ConfigureAwait(false);
+            await _http.PostAsync(webhookUrl, content).ConfigureAwait(false);
         }
         catch
         {

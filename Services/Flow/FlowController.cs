@@ -21,7 +21,7 @@ public sealed class FlowController
         _executor = new FlowActionExecutor(playerState, registry);
     }
 
-    public OperationResult ExecuteEnter(ModeConfig config, Entity playerCharacter, ZoneDefinition zone, GameModeContext? ctx = null, ulong steamIdOverride = 0)
+    public OperationResult ExecuteEnter(ModeConfig config, Entity playerCharacter, ZoneDefinition zone, GameModeContext? ctx = null, ulong steamIdOverride = 0, bool publishZoneEvent = true)
     {
         var steamId = steamIdOverride != 0 ? steamIdOverride : playerCharacter.GetSteamId();
         var prepKey = $"entryPrepared:{steamId}";
@@ -52,15 +52,18 @@ public sealed class FlowController
                 return result;
             }
 
-            GameEvents.OnZoneEnter?.Invoke(new ZoneEnterEvent
+            if (publishZoneEvent)
             {
-                PlayerEntity = playerCharacter,
-                SteamId = steamId,
-                ZoneId = zone.Name,
-                SessionId = ctx?.SessionId ?? ""
-            });
+                GameEvents.RaiseZoneEnter(new ZoneEnterEvent
+                {
+                    PlayerEntity = playerCharacter,
+                    SteamId = steamId,
+                    ZoneId = zone.Name,
+                    SessionId = ctx?.SessionId ?? ""
+                });
+            }
 
-            if (TryGetUser(playerCharacter, out var user))
+            if (publishZoneEvent && TryGetUser(playerCharacter, out var user))
                 NotificationHelper.NotifyPlayer(user, $"Entered {zone.Name}. Loadout applied.");
 
             return OperationResult.Ok();
@@ -93,7 +96,7 @@ public sealed class FlowController
             if (!result.Success)
                 return result;
 
-            GameEvents.OnZoneExit?.Invoke(new ZoneExitEvent
+            GameEvents.RaiseZoneExit(new ZoneExitEvent
             {
                 PlayerEntity = playerCharacter,
                 SteamId = steamId,
@@ -101,8 +104,15 @@ public sealed class FlowController
                 SessionId = ctx?.SessionId ?? ""
             });
 
-            if (TryGetUser(playerCharacter, out var user))
-                NotificationHelper.NotifyPlayer(user, $"Exited {zone.Name}. Original state restored.");
+            try
+            {
+                if (TryGetUser(playerCharacter, out var user))
+                    NotificationHelper.NotifyPlayer(user, $"Exited {zone.Name}. Original state restored.");
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogWarning($"[FlowController] Exit notification failed for {steamId}: {ex.Message}");
+            }
 
             return OperationResult.Ok();
         }
@@ -194,9 +204,6 @@ public sealed class FlowController
     {
         if (!_playerState.RestoreSnapshot(playerCharacter, zone.Hash))
             return OperationResult.Fail($"No snapshot found for {playerCharacter.GetSteamId()}.");
-
-        if (config.Session.Rules.EnablePvP)
-            playerCharacter.SetTeam(0);
 
         return OperationResult.Ok();
     }

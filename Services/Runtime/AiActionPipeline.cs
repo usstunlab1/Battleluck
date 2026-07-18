@@ -329,7 +329,7 @@ public sealed class RiskValidator
 }
 
 /// <summary>Tech validation for action constraints (standalone validator).</summary>
-public sealed class ActionTechValidator
+public sealed class ActionTechValidator : ISpanFormattable
 {
     /// <summary>
     /// Validates tech constraints for a specific action.
@@ -355,5 +355,22 @@ public sealed class ActionTechValidator
         }
 
         return (true, null, null);
+    }
+
+    public string ToString(string? format, IFormatProvider? formatProvider)
+    {
+        FormattableString formattable = $"";
+        return formattable.ToString(formatProvider);
+    }
+
+    public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format,
+        IFormatProvider? provider)
+    {
+        return destination.TryWrite(provider, $"", out charsWritten);
+    }
+
+    public override string ToString()
+    {
+        return $"";
     }
 }

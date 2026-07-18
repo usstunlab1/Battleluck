@@ -35,11 +35,10 @@ public static class ConfigController
     {
         try
         {
-            var loader = new EventDefinitionLoader();
-            var path = Path.Combine(loader.EventsRoot, modeId, "flow.json");
+            var path = Path.Combine(BattleLuck.Core.Loaders.ModeConfigLoader.EventsRoot, modeId, "flow.json");
             if (!File.Exists(path))
             {
-                path = Path.Combine(loader.EventsRoot, $"{modeId}.json");
+                path = Path.Combine(BattleLuck.Core.Loaders.ModeConfigLoader.EventsRoot, $"{modeId}.json");
                 if (!File.Exists(path))
                     return OperationResult.Fail($"Event '{modeId}' not found.");
             }
@@ -84,11 +83,10 @@ public static class ConfigController
     {
         try
         {
-            var loader = new EventDefinitionLoader();
-            var path = Path.Combine(loader.EventsRoot, modeId, "flow.json");
+            var path = Path.Combine(BattleLuck.Core.Loaders.ModeConfigLoader.EventsRoot, modeId, "flow.json");
             if (!File.Exists(path))
             {
-                path = Path.Combine(loader.EventsRoot, $"{modeId}.json");
+                path = Path.Combine(BattleLuck.Core.Loaders.ModeConfigLoader.EventsRoot, $"{modeId}.json");
                 if (!File.Exists(path))
                     return OperationResult.Fail($"Event '{modeId}' not found.");
             }

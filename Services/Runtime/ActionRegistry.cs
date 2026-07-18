@@ -1,4 +1,6 @@
+using System.Linq;
 using System.Text.Json;
+using BattleLuck.Models;
 
 namespace BattleLuck.Services.Runtime;
 
@@ -30,47 +32,56 @@ public sealed class ActionRegistry
         try
         {
             var json = File.ReadAllText(catalogPath);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
+            var catalog = JsonSerializer.Deserialize<ActionCatalog>(json, JsonOpts);
+            if (catalog == null) return;
 
-            if (root.TryGetProperty("registered", out var registered) && registered.ValueKind == JsonValueKind.Array)
+            foreach (var action in catalog.Registered)
             {
-                foreach (var action in registered.EnumerateArray())
+                if (!string.IsNullOrWhiteSpace(action))
+                    _registeredActions.Add(action);
+            }
+
+            if (catalog.LlmGuidance != null)
+            {
+                foreach (var kvp in catalog.LlmGuidance.LegacyMappings)
                 {
-                    var value = action.GetString();
-                    if (!string.IsNullOrWhiteSpace(value))
-                        _registeredActions.Add(value);
+                    _aliases[kvp.Key] = kvp.Value;
                 }
             }
 
-            if (root.TryGetProperty("llm_guidance", out var guidance) &&
-                guidance.ValueKind == JsonValueKind.Object &&
-                guidance.TryGetProperty("legacy_mappings", out var mappings) &&
-                mappings.ValueKind == JsonValueKind.Object)
+            foreach (var def in catalog.Actions)
             {
-                foreach (var prop in mappings.EnumerateObject())
+                if (!string.IsNullOrWhiteSpace(def.ActionId))
                 {
-                    _aliases[prop.Name] = prop.Value.GetString() ?? prop.Name;
+                    _byId[def.ActionId] = new ActionDefinition
+                    {
+                        ActionId = def.ActionId,
+                        Action = def.Action,
+                        Params = def.Params,
+                        Category = def.Category,
+                        RiskLevel = def.RiskLevel
+                    };
                 }
             }
 
-            if (root.TryGetProperty("actions", out var actions) && actions.ValueKind == JsonValueKind.Array)
+            foreach (var def in catalog.Sequences)
             {
-                foreach (var action in actions.EnumerateArray())
+                if (!string.IsNullOrWhiteSpace(def.SequenceId))
                 {
-                    var def = JsonSerializer.Deserialize<ActionDefinition>(action.GetRawText(), JsonOpts);
-                    if (def != null && !string.IsNullOrWhiteSpace(def.ActionId))
-                        _byId[def.ActionId] = def;
-                }
-            }
-
-            if (root.TryGetProperty("sequences", out var sequences) && sequences.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var seq in sequences.EnumerateArray())
-                {
-                    var def = JsonSerializer.Deserialize<SequenceDefinition>(seq.GetRawText(), JsonOpts);
-                    if (def != null && !string.IsNullOrWhiteSpace(def.SequenceId))
-                        _sequences[def.SequenceId] = def;
+                    _sequences[def.SequenceId] = new SequenceDefinition
+                    {
+                        SequenceId = def.SequenceId,
+                        Name = def.Name,
+                        Description = def.Description,
+                        Steps = def.Steps.Select(s => new SequenceStep
+                        {
+                            Id = s.Id,
+                            ActionId = s.ActionId,
+                            Action = s.Action,
+                            DelaySeconds = s.DelaySeconds,
+                            Params = s.Params
+                        }).ToList()
+                    };
                 }
             }
         }

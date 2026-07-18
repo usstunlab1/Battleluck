@@ -876,7 +876,7 @@ public sealed class LiveEventOperatorService
         sb.AppendLine("Do not propose strict-profile blocked native construction actions: build.free, build.spawn, structure.spawn, tile.place, wall.build, floor.place, wall.destroy, or zone.border.*.");
         sb.AppendLine("A schematic action is allowed only when the catalog validates it and it includes safetyMode=event_tracked_zone_only; otherwise omit it.");
         sb.AppendLine("Event kits are transactional: old kit/equipment/ability/passive slots are snapshotted and removed; exit/elimination removes the event kit before snapshot restore. Never mutate kit, abilities, blood, level, or inventory after snapshot.restore.");
-        sb.AppendLine("livesPerPlayer counts immediate in-arena respawns. livesPerPlayer=3 means deaths 1-3 respawn and death 4 eliminates with personal rollback.");
+        sb.AppendLine("livesPerPlayer is the managed death limit. livesPerPlayer=3 means deaths 1-2 respawn and death 3 eliminates with personal rollback.");
         sb.AppendLine("The .toggleleave boundary rule activates only after session start and per-player arena teleport.");
         sb.AppendLine("Validate every action before returning JSON. Omit actions rejected by handler, prompt, prefab, safetyMode, count, batch, or tile-cap validation.");
         sb.AppendLine("A preview is not applied. Approval writes and reloads the config; only the command result can confirm success. Rollback restores a pending config proposal or discards a pending live action, not an action that already executed.");

@@ -48,7 +48,7 @@ public static class ProjectMEventRouterPatches
 
                 if (!died.Exists()) continue;
 
-                ProjectMEventRouter.Instance?.RaisePlayerDeath(new PlayerDeathEvent(died, killer, time));
+                ProjectMEventRouter.Instance?.RaisePlayerDeath(entity, new PlayerDeathEvent(died, killer, time));
             }
         }
         finally

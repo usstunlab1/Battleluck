@@ -1,5 +1,4 @@
 using Unity.Entities;
-using BattleLuck.ECS.Actions.Components;
 
 namespace BattleLuck.Services;
 
@@ -7,7 +6,8 @@ namespace BattleLuck.Services;
 /// Auto-assigns session teams based on the number of participating players:
 ///   - Odd player count  → free-for-all (every player on a unique team).
 ///   - Even player count → two balanced teams (alternating assignment, e.g. 4 → 2v2).
-/// Writes both the live ECS team (<c>SetTeam</c>) and the session <see cref="GameModeContext.Teams"/> map.
+/// Writes the live game team (<c>SetTeam</c>), the session
+/// <see cref="GameModeContext.Teams"/> map, and the managed participant registry.
 /// Only operates pre-start/warmup; mid-match reshushes require admin confirmation.
 /// </summary>
 public static class TeamBalancer
@@ -37,15 +37,7 @@ public static class TeamBalancer
             int teamId = ffa ? FfaTeamBase + i : (i % 2 == 0 ? TeamA : TeamB);
             entity.SetTeam(teamId);
             ctx.Teams[steamId] = teamId;
-
-            // Sync EventParticipant TeamIndex
-            var em = VRisingCore.EntityManager;
-            if (em.HasComponent<EventParticipant>(entity))
-            {
-                var participant = em.GetComponentData<EventParticipant>(entity);
-                participant.TeamIndex = teamId;
-                em.SetComponentData(entity, participant);
-            }
+            BattleLuckPlugin.Session?.TryUpdatePlayerTeam(steamId, teamId);
         }
 
         ctx.Broadcast?.Invoke(ffa

@@ -31,6 +31,8 @@ public sealed class DiscordBridgeController : IDisposable
     readonly ConcurrentDictionary<string, PendingServantOrder> _pendingServantOrders = new();
     const int PendingOrderTtlMinutes = 10;
 
+    public bool IsRunning => _running;
+
     static readonly string[] ServantRegionHints =
     {
         "Farbane", "Dunley", "Silverlight", "CursedForest",

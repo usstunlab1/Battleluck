@@ -132,19 +132,21 @@ public static class AnalyticsValidator
         var allTrackingActions = ResolveAllActions(config, "tracking");
         var allWinnerActions = ResolveAllActions(config, "winner");
         var allEndingActions = ResolveAllActions(config, "ending");
+        var managedEnterFallback = config.UsesManagedPlayerLifecycle && allEnterActions.Count == 0;
+        var managedExitFallback = config.UsesManagedPlayerLifecycle && allExitActions.Count == 0;
 
-        if (allEnterActions.Count == 0)
+        if (allEnterActions.Count == 0 && !managedEnterFallback)
             issues.Add($"Mode '{modeId}' enter flow is empty. Analytics requires at least one enter action to track sessions.");
 
-        if (allExitActions.Count == 0)
+        if (allExitActions.Count == 0 && !managedExitFallback)
             issues.Add($"Mode '{modeId}' exit flow is empty. Analytics requires exit actions to compute session duration and cleanup.");
 
         var hasSpawnAction = allEnterActions.Concat(allStartActions).Any(a => HasActionPrefix(a, _analyticsSpawnActions));
-        var hasLifecycleAction = allEnterActions.Concat(allExitActions).Any(a => HasActionPrefix(a, _analyticsLifecycleActions));
-        var hasTeleportAction = allEnterActions.Any(a => HasActionPrefix(a, _analyticsTeleportActions));
+        var hasLifecycleAction = config.UsesManagedPlayerLifecycle || allEnterActions.Concat(allExitActions).Any(a => HasActionPrefix(a, _analyticsLifecycleActions));
+        var hasTeleportAction = managedEnterFallback || allEnterActions.Any(a => HasActionPrefix(a, _analyticsTeleportActions));
         var hasRegionAction = allEnterActions.Concat(allTrackingActions).Any(a => HasActionPrefix(a, _analyticsRegionActions));
-        var hasPvPAction = allEnterActions.Concat(allTrackingActions).Any(a => HasActionPrefix(a, _analyticsPvPActions));
-        var hasInventoryAction = allEnterActions.Concat(allExitActions).Any(a => HasActionPrefix(a, _analyticsInventoryActions));
+        var hasPvPAction = config.UsesManagedPlayerLifecycle || allEnterActions.Concat(allTrackingActions).Any(a => HasActionPrefix(a, _analyticsPvPActions));
+        var hasInventoryAction = managedEnterFallback || allEnterActions.Concat(allExitActions).Any(a => HasActionPrefix(a, _analyticsInventoryActions));
 
         if (!hasSpawnAction && _analyticsSpawnActions.Any(a => !allEnterActions.Contains(a)))
             issues.Add($"Mode '{modeId}' enter flow has no spawn action. Analytics cannot track entity spawn counts.");

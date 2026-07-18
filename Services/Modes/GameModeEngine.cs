@@ -116,6 +116,8 @@ public sealed class GameModeEngine : GameModeBase
 
         foreach (var steamId in ctx.Players)
             _lives[steamId] = _livesPerPlayer;
+        ctx.State["deathsRemaining"] = _lives;
+        // Compatibility key retained for existing dashboards/config tooling.
         ctx.State["respawnsRemaining"] = _lives;
         ctx.State["respawnAllowancePerPlayer"] = _livesPerPlayer;
         _initialPlayerCount = ctx.Players.Count;
@@ -192,16 +194,38 @@ public sealed class GameModeEngine : GameModeBase
         });
     }
 
-    public void OnPlayerDowned(GameModeContext ctx, ulong victimSteamId, ulong? killerSteamId)
+    public override void OnPlayerDowned(GameModeContext ctx, ulong victimSteamId, ulong killerSteamId)
     {
-        if (killerSteamId.HasValue && killerSteamId.Value != victimSteamId)
+        if (killerSteamId != 0 && killerSteamId != victimSteamId)
         {
-            _playerKills[killerSteamId.Value] = _playerKills.GetValueOrDefault(killerSteamId.Value) + 1;
-            ScoreAction(ctx, killerSteamId.Value, ActionType.Kill, 1);
-            ctx.Broadcast?.Invoke($"Kill! ({ctx.Scores.GetPlayerScore(killerSteamId.Value)} total)");
+            _playerKills[killerSteamId] = _playerKills.GetValueOrDefault(killerSteamId) + 1;
+            ScoreAction(ctx, killerSteamId, ActionType.Kill, 1);
+            ctx.Broadcast?.Invoke($"Kill! ({ctx.Scores.GetPlayerScore(killerSteamId)} total)");
         }
 
-        HandleDownedOrEliminated(ctx, victimSteamId, killerSteamId);
+        if (_lives.TryGetValue(victimSteamId, out var remaining))
+        {
+            remaining = Math.Max(0, remaining - 1);
+            _lives[victimSteamId] = remaining;
+            if (remaining > 0)
+            {
+                ctx.Broadcast?.Invoke($"Down! Immediate arena respawn; {remaining} {(remaining == 1 ? "death" : "deaths")} remaining before elimination.");
+            }
+        }
+    }
+
+    public override void OnPlayerEliminated(GameModeContext ctx, ulong victimSteamId, ulong killerSteamId)
+    {
+        _lives.Remove(victimSteamId);
+        ctx.Players.Remove(victimSteamId);
+        ScoreAction(ctx, victimSteamId, ActionType.Elimination, 0);
+        GameEvents.RaisePlayerEliminated(new PlayerEliminatedEvent
+        {
+            SessionId = ctx.SessionId,
+            SteamId = victimSteamId,
+            EliminatedBy = killerSteamId == 0 ? null : killerSteamId
+        });
+        ctx.Broadcast?.Invoke($"ELIMINATED! ({ctx.Players.Count} remain)");
     }
 
     public void OnRoundEnd(GameModeContext ctx, int roundNumber)
@@ -469,27 +493,6 @@ public sealed class GameModeEngine : GameModeBase
             var prefabs = SpawnController.GetEnemiesForWave(waveDef.WaveNumber);
             spawner.SpawnWave(prefabs, waveDef.EnemyCount, _center, 6f);
         }
-    }
-
-    private void HandleDownedOrEliminated(GameModeContext ctx, ulong victimSteamId, ulong? killerSteamId)
-    {
-        if (_lives.TryGetValue(victimSteamId, out int remaining) && remaining > 0)
-        {
-            remaining--;
-            _lives[victimSteamId] = remaining;
-            ctx.Broadcast?.Invoke($"Down! Immediate arena respawn; {remaining} {(remaining == 1 ? "respawn" : "respawns")} remaining after this one.");
-            return;
-        }
-
-        ctx.Players.Remove(victimSteamId);
-        ScoreAction(ctx, victimSteamId, ActionType.Elimination, 0);
-        GameEvents.OnPlayerEliminated?.Invoke(new PlayerEliminatedEvent
-        {
-            SessionId = ctx.SessionId,
-            SteamId = victimSteamId,
-            EliminatedBy = killerSteamId
-        });
-        ctx.Broadcast?.Invoke($"ELIMINATED! ({ctx.Players.Count} remain)");
     }
 
     private void CheckWinConditions(GameModeContext ctx)

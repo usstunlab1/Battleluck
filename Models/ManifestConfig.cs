@@ -13,6 +13,9 @@ namespace BattleLuck.Models;
 /// </summary>
 public sealed class ManifestConfig
 {
+    /// <summary>
+    /// Event definition identifier. Historically named ModeId for compatibility.
+    /// </summary>
     [JsonPropertyName("modeId")]
     public string? ModeId { get; set; }
 

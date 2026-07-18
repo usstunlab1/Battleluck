@@ -47,7 +47,7 @@ public sealed class GameModeRegistry
 
         try
         {
-            var config = ConfigLoader.Load(modeId);
+            var config = ModeConfigLoader.Load(modeId);
             Register(new GameModeEngine(config));
             return true;
         }

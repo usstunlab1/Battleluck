@@ -4,15 +4,6 @@ using Unity.Collections;
 
 namespace BattleLuck.ECS.Actions.Components;
 
-public struct EventParticipant
-{
-    public Entity SessionEntity;
-    public FixedString64Bytes SessionId;
-    public int TeamIndex;
-    public int DeathCount;
-    public bool Eliminated;
-}
-
 public struct ActionIntent
 {
     public FixedString64Bytes ActionId;

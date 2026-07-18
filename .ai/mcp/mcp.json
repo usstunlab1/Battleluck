@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "Perforce MCP": {
+      "command": "C:/Users/ahmad/OneDrive/Desktop/BL/obj/BattleLuck/rider.project.model.nuget.info",
+      "args": [
+        "--readonly",
+        "--allow-usage"
+      ]
+    }
+  }
+}

@@ -64,11 +64,30 @@ health.
 
 ## Included features
 
-- Match-ready, action-driven event flow for arena and custom V Rising events.
+- An action-driven event runtime framework with configurable example modes.
+  Unified modes without explicit legacy flows use the managed snapshot, kit,
+  team, teleport, death, and restore lifecycle. Shipped locations, prefabs,
+  spawns, and cleanup still require live-server validation before production use.
 - NPC control, boss commands, generic actions, and safe action reachability checks.
 - Player event sessions, loadouts, progression, death-prevention charges, native-backed rollback snapshots, and restore-on-exit flows.
 - Teleport services, spatial points, borders, schematics, and verified data catalogs.
 - Optional local LLM prompts for event and mod authoring with approval gates and main-thread-safe execution.
+
+### Event and mode terminology
+
+In BattleLuck, a mode is an event definition. The identifiers `modeId` and
+`eventId` refer to the same configuration concept, such as `bloodbath`,
+`colosseum`, or `trial_of_all_actions`.
+
+The name `modeId` is retained in models, JSON files, commands, and APIs for
+backward compatibility. A running instance of an event is identified separately
+by its `sessionId` or event run identifier.
+
+```text
+ModeId / EventId = bloodbath
+SessionId        = a specific run of bloodbath
+ZoneHash         = the zone used for that run
+```
 
 ## 🌐 Open-source / self-hosted game operations
 
@@ -213,6 +232,10 @@ event tick.
 Use `.ai.sequence.show/list/add/delete` to maintain named sequences, then invoke a
 validated sequence with `sequence.custom.play:sequenceId=<id>|schedule=true` from
 an event phase, timer, trigger, or approved live action.
+
+These managed custom sequences do not depend on the native ProjectM
+`SequencerUpdateGroup` Harmony hook. That telemetry hook is disabled for the
+current game API until a stable patch target is verified on a live server.
 
 ### Optional event and server commands
 

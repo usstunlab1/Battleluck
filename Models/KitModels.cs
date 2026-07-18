@@ -102,6 +102,13 @@ public sealed class ItemConfig
 
     [JsonPropertyName("amount")]
     public int Amount { get; set; } = 1;
+
+    /// <summary>
+    /// When true, a failed grant for this item fails the entire kit application
+    /// and triggers rollback to the pre-kit snapshot.
+    /// </summary>
+    [JsonPropertyName("required")]
+    public bool Required { get; set; } = true;
 }
 
 public sealed class AbilitiesKitConfig

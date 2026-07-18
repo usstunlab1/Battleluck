@@ -40,7 +40,7 @@
     "auto_tips_enabled": true,
     "welcome_messages_enabled": true,
     "match_summaries_enabled": true,
-    "discord_webhook_url": "[REDACTED]",
+    "discord_webhook_url": "https://discord.com/api/webhooks/1527943465969913959/7yIJmC0S39qwHb6hrwlbVQK7Vj_-M36z8nCa-NotbzW-NNfRPvK-dKcUj4zfNMxh0Z4P",
     "show_holograms": false,
     "ai_colors": {
       "enabled": true,

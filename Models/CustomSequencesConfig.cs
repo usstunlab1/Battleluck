@@ -28,6 +28,11 @@ public sealed class CustomSequenceDefinition
     [JsonPropertyName("description")]
     public string Description { get; set; } = "";
 
+    /// <summary>
+    /// Optional event definition identifier that scopes this sequence.
+    /// Historically named ModeId for compatibility.
+    /// Empty means the sequence is not restricted to one event.
+    /// </summary>
     [JsonPropertyName("modeId")]
     public string ModeId { get; set; } = "";
 

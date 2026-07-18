@@ -10,24 +10,22 @@
     "value": 100.0
   },
   "armors": {
-    "chest": "Item_Armor_Chest_T08",
-    "legs": "Item_Armor_Legs_T08",
-    "gloves": "Item_Armor_Gloves_T08",
-    "boots": "Item_Armor_Boots_T08",
-    "cloak": "Item_Cloak_T08",
-    "headgear": "Item_Headgear_T08",
-    "magicSource": "Item_MagicSource_Frost_T08"
+    "chest": "Item_Chest_T08_DarkSilver_Scholar",
+    "legs": "Item_Legs_T08_DarkSilver_Scholar",
+    "gloves": "Item_Gloves_T08_DarkSilver_Scholar",
+    "boots": "Item_Boots_T08_DarkSilver_Scholar",
+    "magicSource": "Item_MagicSource_General_T08_Frost"
   },
   "weapons": [
-    { "prefab": "Item_Weapon_Sword_T08", "amount": 1 },
-    { "prefab": "Item_Weapon_Crossbow_T08", "amount": 1 }
+    { "prefab": "Item_Weapon_Sword_T08_Sanguine", "amount": 1 },
+    { "prefab": "Item_Weapon_Crossbow_T08_Sanguine", "amount": 1 }
   ],
   "items": [],
   "abilities": {
-    "travel": { "prefab": "AB_Frost_ArcticLeap" },
-    "spell1": { "prefab": "AB_Frost_CrystalLance" },
-    "spell2": { "prefab": "AB_Frost_IceNova" },
-    "ultimate": { "prefab": "AB_Frost_IceBlockVortex" }
+    "travel": { "prefab": "AB_Frost_ArcticLeap_AbilityGroup" },
+    "spell1": { "prefab": "AB_Frost_CrystalLance_AbilityGroup" },
+    "spell2": { "prefab": "AB_Frost_IceNova_AbilityGroup" },
+    "ultimate": { "prefab": "AB_Frost_IceBlockVortex_AbilityGroup" }
   },
   "passiveSpells": []
 }

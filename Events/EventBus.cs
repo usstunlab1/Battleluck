@@ -53,6 +53,28 @@ public static class GameEvents
     // Discord Bridge
     public static Action<DiscordCommandEvent>? OnDiscordCommand;
 
+    /// <summary>Publish a committed zone entry without allowing one subscriber to break the lifecycle.</summary>
+    public static void RaiseZoneEnter(ZoneEnterEvent value) => SafeInvoke(OnZoneEnter, value, nameof(OnZoneEnter));
+
+    /// <summary>Publish a completed zone exit without allowing one subscriber to invalidate restoration.</summary>
+    public static void RaiseZoneExit(ZoneExitEvent value) => SafeInvoke(OnZoneExit, value, nameof(OnZoneExit));
+
+    /// <summary>Publish canonical managed elimination exactly once.</summary>
+    public static void RaisePlayerEliminated(PlayerEliminatedEvent value) =>
+        SafeInvoke(OnPlayerEliminated, value, nameof(OnPlayerEliminated));
+
+    static void SafeInvoke<T>(Action<T>? handlers, T value, string eventName)
+    {
+        if (handlers == null)
+            return;
+
+        foreach (Action<T> handler in handlers.GetInvocationList())
+        {
+            try { handler(value); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[GameEvents] {eventName} subscriber failed: {ex.Message}"); }
+        }
+    }
+
     /// <summary>
     /// Unhook all subscribers. Call on plugin unload / session teardown.
     /// </summary>

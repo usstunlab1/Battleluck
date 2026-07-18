@@ -15,9 +15,11 @@ public static class FlowValidator
         var trackingActions = ResolveActions(config.Session.Flow.Tracking);
         var winnerActions = ResolveActions(config.Session.Flow.Winner);
         var endingActions = ResolveActions(config.Session.Flow.Ending);
+        var managedEnterFallback = config.UsesManagedPlayerLifecycle && enterActions.Count == 0;
+        var managedExitFallback = config.UsesManagedPlayerLifecycle && exitActions.Count == 0;
 
-        ValidatePhase("enter", enterActions, modeId, issues, config, required: true);
-        ValidatePhase("exit", exitActions, modeId, issues, config, required: true);
+        ValidatePhase("enter", enterActions, modeId, issues, config, required: !managedEnterFallback);
+        ValidatePhase("exit", exitActions, modeId, issues, config, required: !managedExitFallback);
         ValidatePhase("start", startActions, modeId, issues, config, required: false);
         ValidatePhase("tracking", trackingActions, modeId, issues, config, required: false);
         ValidatePhase("winner", winnerActions, modeId, issues, config, required: false);
@@ -25,10 +27,12 @@ public static class FlowValidator
 
         ValidateSnapshotSymmetry(enterActions, exitActions, modeId, issues);
         ValidateKitSymmetry(enterActions, exitActions, modeId, issues);
-        ValidateTeleportTargets(enterActions, config, modeId, issues);
+        if (!managedEnterFallback)
+            ValidateTeleportTargets(enterActions, config, modeId, issues);
         ValidateNoDeprecatedSchematicLoad(enterActions, modeId, issues);
         ValidateNoDeprecatedSchematicLoad(exitActions, modeId, issues, phase: "exit");
-        ValidatePvpConsistency(enterActions, config, modeId, issues);
+        if (!config.UsesManagedPlayerLifecycle || enterActions.Count > 0)
+            ValidatePvpConsistency(enterActions, config, modeId, issues);
         ValidateBloodTypeConsistency(enterActions, modeId, issues);
 
         CheckZoneHashReferences(enterActions, config, modeId, issues);

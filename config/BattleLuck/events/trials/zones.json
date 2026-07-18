@@ -29,6 +29,11 @@
         "y": 5,
         "z": -2800
       },
+      "center": {
+        "x": -1570,
+        "y": 5,
+        "z": -2800
+      },
       "radius": 20,
       "exitRadius": 25,
       "isSafe": false,

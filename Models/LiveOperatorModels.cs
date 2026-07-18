@@ -31,6 +31,9 @@ public sealed class OperatorProposal
     [JsonPropertyName("operationId")]
     public string OperationId { get; set; } = "";
 
+    /// <summary>
+    /// Event definition identifier. Historically named ModeId for compatibility.
+    /// </summary>
     [JsonPropertyName("modeId")]
     public string ModeId { get; set; } = "";
 

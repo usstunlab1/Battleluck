@@ -1,5 +1,6 @@
 namespace BattleLuck.Services.Runtime
 {
+    using System.Threading;
     using System.Threading.Tasks;
     using Services.Runtime;
 
@@ -15,6 +16,7 @@ namespace BattleLuck.Services.Runtime
         private readonly CapabilityRegistry _capabilityRegistry = new();
         private readonly McpRuntimeEventBus _eventBus = new();
         private readonly SnapshotServiceImpl _snapshotService;
+        private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
 
         public IEcsQueryService EcsQueryService => _ecsQueryService;
         public IPrefabRegistryService PrefabRegistry => _prefabRegistry;
@@ -34,10 +36,13 @@ namespace BattleLuck.Services.Runtime
 
         public async Task InitializeAsync()
         {
+            await _lifecycleGate.WaitAsync().ConfigureAwait(false);
             try
             {
+                if (IsInitialized)
+                    return;
+
                 _sessionRuntime.ConnectToSessionController(BattleLuckPlugin.Session);
-                await Task.CompletedTask;
                 IsInitialized = true;
                 LastError = null;
                 BattleLuckLogger.Log("[Runtime] Service bootstrap initialized");
@@ -47,20 +52,31 @@ namespace BattleLuck.Services.Runtime
                 LastError = ex.Message;
                 BattleLuckLogger.Error($"Failed to initialize runtime services: {ex.Message}");
             }
+            finally
+            {
+                _lifecycleGate.Release();
+            }
         }
 
         public async Task ShutdownAsync()
         {
+            await _lifecycleGate.WaitAsync().ConfigureAwait(false);
             try
             {
+                if (!IsInitialized)
+                    return;
+
                 _sessionRuntime.ConnectToSessionController(null);
-                await Task.CompletedTask;
                 IsInitialized = false;
                 LastError = null;
             }
             catch (Exception ex)
             {
                 LastError = ex.Message;
+            }
+            finally
+            {
+                _lifecycleGate.Release();
             }
         }
     }

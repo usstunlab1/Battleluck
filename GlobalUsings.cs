@@ -48,3 +48,5 @@ global using BattleLuck.Services.Runtime;
 global using BattleLuck.Services.Zone;
 global using BattleLuck.Core.Loaders;
 global using BattleLuck.Core.Validation;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("BattleLuck.Tests")]

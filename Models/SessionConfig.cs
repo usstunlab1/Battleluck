@@ -94,7 +94,7 @@ public sealed class SessionRules
     [JsonPropertyName("eliminationMode")]
     public bool EliminationMode { get; set; }
 
-    /// <summary>Immediate in-arena respawns allowed before the next death eliminates the player.</summary>
+    /// <summary>Managed death limit; deaths below this value respawn and the limit death eliminates.</summary>
     [JsonPropertyName("livesPerPlayer")]
     public int LivesPerPlayer { get; set; } = 3;
 

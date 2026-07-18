@@ -81,6 +81,9 @@ public sealed class AiActionPlanner
             if (json == null)
                 return plan;
 
+            // LLMs sometimes escape quotes in JSON responses; normalize them.
+            json = json.Replace("\\\"", "\"");
+
             var steps = JsonSerializer.Deserialize<List<AiActionPlanStep>>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (steps != null)
@@ -93,7 +96,7 @@ public sealed class AiActionPlanner
         return plan;
     }
 
-    static string? ExtractJsonArray(string text)
+    public static string? ExtractJsonArray(string text)
     {
         var start = text.IndexOf('[');
         var end = text.LastIndexOf(']');

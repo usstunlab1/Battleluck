@@ -433,7 +433,8 @@ return fileName switch
         var aiConfig = ConfigLoader.LoadAIConfig();
         var maxActions = Math.Clamp(aiConfig.EventAuthoring.MaxActionsPerEvent, 1, 1000);
         var result = new EventValidationResult();
-        new EventDefinitionLoader().Validate(definition, result, maxActions);
+        var eventLoader = new EventDefinitionLoader();
+        eventLoader.Validate(definition, result, maxActions);
         if (result.Success)
             return true;
 

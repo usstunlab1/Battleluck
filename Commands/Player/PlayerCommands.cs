@@ -16,9 +16,24 @@ using VampireCommandFramework;
 
 public static class PlayerCommands
 {
-    static readonly LiveEventOperatorService LiveOperator = new();
-    static readonly CustomSequenceService CustomSequences = new();
-    static readonly AiTaskService AiTasks = AiTaskService.Instance;
+    static LiveEventOperatorService? _liveOperator;
+    static CustomSequenceService? _customSequences;
+    static AiTaskService? _aiTasks;
+    static LiveEventOperatorService LiveOperator => _liveOperator ??= CreateLiveOperator();
+    static CustomSequenceService CustomSequences => _customSequences ??= new CustomSequenceService();
+    static AiTaskService AiTasks => _aiTasks ??= CreateAiTaskService();
+    
+    static LiveEventOperatorService CreateLiveOperator()
+    {
+        try { return new LiveEventOperatorService(); }
+        catch (Exception ex) { BattleLuckPlugin.LogError($"[PlayerCommands] Failed to initialize LiveEventOperatorService: {ex}"); return new LiveEventOperatorService(); }
+    }
+    
+    static AiTaskService CreateAiTaskService()
+    {
+        try { return AiTaskService.Instance; }
+        catch (Exception ex) { BattleLuckPlugin.LogError($"[PlayerCommands] Failed to initialize AiTaskService: {ex}"); return new AiTaskService(); }
+    }
     static readonly string[] TeamColorBuffs =
     {
         "VBlood_Aura_Champion_Red",

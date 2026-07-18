@@ -41,7 +41,7 @@ namespace BattleLuck.Services
         var em = VRisingCore.EntityManager;
         var snap = new PlayerSnapshot
         {
-            Version = 2,
+            Version = 3,
             GameVersion = Application.version,
             PlayerId = steamId.ToString(),
             Timestamp = DateTime.UtcNow,
@@ -49,6 +49,9 @@ namespace BattleLuck.Services
             EventRunId = eventRunId?.Trim() ?? "",
             EventModeId = eventModeId?.Trim() ?? ""
         };
+
+        if (character.TryGetComponent(out Team team))
+            snap.TeamValue = team.Value;
 
         // 1. Name
         if (character.TryGetComponent(out PlayerCharacter pc))
@@ -289,6 +292,11 @@ namespace BattleLuck.Services
 
         // Step 12: Restore position
         character.SetPosition(new float3(snap.Position.X, snap.Position.Y, snap.Position.Z));
+
+        // Step 13: restore the native team that existed before the event.
+        // Version 1/2 snapshots deserialize this as 0, matching the legacy
+        // cleanup behavior while version 3 preserves clan/faction team values.
+        character.SetTeam(snap.TeamValue);
 
         // Cleanup
         _cache.Remove(steamId);

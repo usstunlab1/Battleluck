@@ -20,11 +20,16 @@ public static class SafeSpawnHelper
             return Entity.Null;
         }
 
-        bool isNpcIntent = actionId.Contains("npc") || actionId.Contains("boss");
-        bool isChestIntent = actionId.Contains("chest");
+        bool isNpcIntent =
+            actionId.Contains("npc", StringComparison.OrdinalIgnoreCase) ||
+            actionId.Contains("boss", StringComparison.OrdinalIgnoreCase);
+        bool isChestIntent =
+            actionId.Contains("chest", StringComparison.OrdinalIgnoreCase);
 
-        var category = BattleLuck.Services.Runtime.PrefabRegistryServiceReal.GetCategory(prefabGuid);
-        bool isUnitCategory = category.Equals("Characters", StringComparison.OrdinalIgnoreCase) || category.Equals("VBoss", StringComparison.OrdinalIgnoreCase);
+        var category = BattleLuck.Services.Runtime.PrefabRegistryServiceReal.GetCategory(prefabGuid) ?? string.Empty;
+        bool isUnitCategory =
+            string.Equals(category, "Characters", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(category, "VBoss", StringComparison.OrdinalIgnoreCase);
 
         if (isNpcIntent && !em.HasComponent<UnitLevel>(prefabEntity) && !isUnitCategory)
         {

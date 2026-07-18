@@ -36,6 +36,9 @@ namespace BattleLuck.Models
     public class BattleAiSessionContextDto
     {
         public string SessionId { get; set; } = "";
+        /// <summary>
+        /// Event definition identifier. Historically named ModeId for compatibility.
+        /// </summary>
         public string ModeId { get; set; } = "";
         public int ZoneHash { get; set; }
         public double ElapsedSeconds { get; set; }

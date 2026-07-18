@@ -5,15 +5,19 @@ allowedActions:
   - notify
   - notification
   - teleport
+  - player.teleport
   - heal
   - blood.change
   - kit.apply
+  - inventory.clear_kit
   - pvp.enable
+  - pvp.disable
   - spawn.wave
   - spawn.npc
   - shrink.zone
-blockedActions:
+  - snapshot.save
   - snapshot.restore
+blockedActions:
   - entity.destroy
   - mode.end
 allowedTechs:
@@ -29,7 +33,7 @@ The first entrant initializes logical session state only. No player starts arena
 
 Players temporarily replace their old inventory, equipped slots, passive spells, and ability slots with the configured Bloodbath kit. Exit or elimination removes the event kit first and restores the original snapshot exactly.
 
-Each player receives three immediate in-arena respawns. Deaths 1, 2, and 3 respawn inside Bloodbath; death 4 eliminates and rolls back only that player.
+Each player has a three-death limit. Deaths 1 and 2 respawn inside Bloodbath; death 3 eliminates and rolls back only that player.
 
 The boundary rule requiring .toggleleave is inactive until the event is fully started and that player has been teleported.
 

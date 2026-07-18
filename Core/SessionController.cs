@@ -1,10 +1,9 @@
-using System.Collections.Generic;
+8using System.Collections.Generic;
 using System.Linq;
 using BattleLuck.Models;
 using BattleLuck.Services.Flow;
 using BattleLuck.Services.Modes;
 using BattleLuck.Services.Runtime;
-using BattleLuck.ECS.Actions.Components;
 using ProjectM.Shared;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -34,6 +33,7 @@ public sealed class SessionController
     readonly global::BattleLuck.Services.Runtime.EventDefinitionLoader _eventDefinitions = new();
     readonly global::BattleLuck.Services.Runtime.EventRuntimeController _eventRuntime;
     readonly FlowActionExecutor _actionExecutor;
+    bool _initialized;
 
     public AutoTrashController AutoTrash => _autoTrash;
     public EventRuntimeController EventRuntime => _eventRuntime;
@@ -88,6 +88,10 @@ public sealed class SessionController
 
     public void Initialize()
     {
+        if (_initialized)
+            return;
+
+        _initialized = true;
         foreach (var modeId in _registry.GetRegisteredModes())
         {
             TryRegisterModeZones(modeId, out _);
@@ -126,6 +130,7 @@ public sealed class SessionController
                 }
 
                 _zoneModeMap[zone.Hash] = modeId;
+                _zoneDetection.RegisterZone(zone);
             }
 
             return true;
@@ -144,24 +149,52 @@ public sealed class SessionController
 
     public void Shutdown()
     {
+        if (!_initialized)
+            return;
+
+        _initialized = false;
         _zoneDetection.OnPlayerEnterZone -= HandlePlayerWalkIntoZone;
         _zoneDetection.OnPlayerExitZone -= HandlePlayerWalkOutOfZone;
         DeathHook.OnDeath -= HandleDeath;
 
         foreach (var session in _activeSessions.Values)
         {
-            session.Spawner.DespawnAll();
+            var context = session.Context;
+            if (context == null)
+            {
+                BattleLuckPlugin.LogWarning("[Session] Skipping malformed session with no context during shutdown.");
+                continue;
+            }
+
+            try { RestorePlayersForSessionEnd(session, context.ZoneHash); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Player restore failed during shutdown for {context.SessionId}: {ex.Message}"); }
+
+            try { _eventRuntime.AbortSession(context.SessionId); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Runtime abort failed during shutdown for {context.SessionId}: {ex.Message}"); }
+
+            try { session.Spawner.DespawnAll(); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Spawn cleanup failed during shutdown for {context.SessionId}: {ex.Message}"); }
             if (EventGeometryMutationsEnabled)
             {
-                session.Border?.DespawnWalls();
-                session.Border?.DespawnFloors();
-                session.Platform?.DespawnPlatform();
-                if (session.Context != null)
-                    SchematicLoader.ClearTrackingGroup(session.Context.SessionId);
+                try
+                {
+                    session.Border?.DespawnWalls();
+                    session.Border?.DespawnFloors();
+                    session.Platform?.DespawnPlatform();
+                }
+                catch (Exception ex)
+                {
+                    BattleLuckPlugin.LogWarning($"[Session] Geometry cleanup failed during shutdown for {context.SessionId}: {ex.Message}");
+                }
             }
+
+            try { SchematicLoader.ClearTrackingGroup(context.SessionId); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Schematic cleanup failed during shutdown for {context.SessionId}: {ex.Message}"); }
         }
-        _eventRuntime.Shutdown();
+        try { _eventRuntime.AbortAll(); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Runtime shutdown cleanup failed: {ex.Message}"); }
         _activeSessions.Clear();
+        _playerSessions.Clear();
         _readyPlayers.Clear();
         _enteringPlayers.Clear();
         _enteredPlayers.Clear();
@@ -171,6 +204,7 @@ public sealed class SessionController
         _recentlyDied.Clear();
         _offlineTicks.Clear();
         _pendingArenaRespawns.Clear();
+        _pendingEnd.Clear();
     }
 
     ModeConfig LoadEffectiveConfig(string modeId) => _eventDefinitions.LoadEffectiveConfig(modeId);
@@ -248,6 +282,16 @@ public sealed class SessionController
     /// <summary>Check if a player is burning from penalty.</summary>
     public bool IsPlayerBurning(ulong steamId) => _penaltyBurning.Contains(steamId);
 
+    /// <summary>Synchronize a live team assignment into canonical managed participant state.</summary>
+    public bool TryUpdatePlayerTeam(ulong steamId, int teamIndex)
+    {
+        if (!_playerSessions.TryGetValue(steamId, out var participant))
+            return false;
+
+        participant.TeamIndex = teamIndex;
+        return true;
+    }
+
     // ── Core enter/exit flows ───────────────────────────────────────────
 
     OperationResult ExecuteEnterFlow(ulong steamId, Entity playerCharacter, int zoneHash, string modeId, float3? returnPositionOverride = null, bool skipEnterActions = false)
@@ -257,50 +301,58 @@ public sealed class SessionController
         if (!_enteringPlayers.Add(steamId))
             return OperationResult.Fail("Enter is already in progress.");
 
-        var config = LoadEffectiveConfig(modeId);
-        var zone = config.Zones.Zones.FirstOrDefault(z => z.Hash == zoneHash);
-        if (zone == null)
-        {
-            _enteringPlayers.Remove(steamId);
-            return OperationResult.Fail($"Zone definition not found for hash {zoneHash}.");
-        }
-
-        var rules = config.Session.Rules;
-        var staging = ResolveActionStagingRules(config);
-        var stageEnterActions = staging.Enabled && staging.StageOnZoneEnter && !skipEnterActions;
-        var session = GetOrCreateSession(zoneHash, modeId);
-
-        // Check player limits
-        if (session.Context.Players.Count >= rules.MaxPlayers)
-        {
-            _enteringPlayers.Remove(steamId);
-            return OperationResult.Fail("Zone is full.");
-        }
-
-        if (session.IsStarted && !rules.AllowLateJoin)
-        {
-            _enteringPlayers.Remove(steamId);
-            return OperationResult.Fail("This match already started and late join is disabled.");
-        }
-
-        // Execute enter flow: save snapshot → clear kit → apply enter kit → heal → teleport
+        ActiveSession? session = null;
+        var entryPreparationAttempted = false;
+        var sessionCreatedForEntry = false;
+        var entryCommitStarted = false;
+        var entryCommitted = false;
+        var previousDetectedZoneHash = 0;
         var returnPositionKey = $"returnPosition:{steamId}";
-        if (returnPositionOverride.HasValue)
-            session.Context.State[returnPositionKey] = returnPositionOverride.Value;
-
-        OperationResult enterResult;
         try
         {
+            previousDetectedZoneHash = _zoneDetection.GetPlayerZone(steamId);
+
+            var config = LoadEffectiveConfig(modeId);
+            var zone = config.Zones.Zones.FirstOrDefault(z => z.Hash == zoneHash);
+            if (zone == null)
+                return OperationResult.Fail($"Zone definition not found for hash {zoneHash}.");
+
+            var rules = config.Session.Rules;
+            var staging = ResolveActionStagingRules(config);
+            var hasConfiguredEnterFlow = HasConfiguredFlow(config.FlowEnter);
+            var stageEnterActions = hasConfiguredEnterFlow && staging.Enabled && staging.StageOnZoneEnter && !skipEnterActions;
+            sessionCreatedForEntry = !_activeSessions.ContainsKey(zoneHash);
+            session = GetOrCreateSession(zoneHash, modeId);
+
+            // Check player limits before mutating the player's state.
+            if (session.Context.Players.Count >= rules.MaxPlayers)
+                return OperationResult.Fail("Zone is full.");
+
+            if (session.IsStarted && !rules.AllowLateJoin)
+                return OperationResult.Fail("This match already started and late join is disabled.");
+
+            if (returnPositionOverride.HasValue)
+                session.Context.State[returnPositionKey] = returnPositionOverride.Value;
+
+            // From this point onward every failure must restore the snapshot and
+            // remove any provisional managed-session state.
+            entryPreparationAttempted = true;
+            OperationResult enterResult;
             if (skipEnterActions || stageEnterActions)
             {
                 // Skip enter actions and do only safe player prep/placement.
                 // Used by admin safety mode and action staging mode.
                 var prepareResult = _playerState.PrepareForEventEntry(playerCharacter, zoneHash, returnPositionOverride, steamId, session.Context.SessionId, modeId);
                 if (!prepareResult.Success)
-                {
-                    _enteringPlayers.Remove(steamId);
-                    return OperationResult.Fail($"Enter prep failed: {prepareResult.Error}");
-                }
+                    return RollbackFailedEntry(
+                        steamId,
+                        playerCharacter,
+                        zoneHash,
+                        previousDetectedZoneHash,
+                        session,
+                        $"Enter prep failed: {prepareResult.Error}",
+                        restoreSnapshot: true,
+                        discardEmptySession: sessionCreatedForEntry);
 
                 if (rules.EnablePvP)
                     playerCharacter.SetTeam(zoneHash + (int)(steamId % 1000));
@@ -314,98 +366,325 @@ public sealed class SessionController
             }
             else
             {
-                enterResult = _flow.ExecuteEnter(config, playerCharacter, zone, session.Context, steamId);
+                // SessionController publishes the zone event only after the
+                // managed participant and runtime have committed successfully.
+                enterResult = _flow.ExecuteEnter(config, playerCharacter, zone, session.Context, steamId, publishZoneEvent: false);
             }
+
+            if (!enterResult.Success)
+                return RollbackFailedEntry(
+                    steamId,
+                    playerCharacter,
+                    zoneHash,
+                    previousDetectedZoneHash,
+                    session,
+                    $"Enter failed: {enterResult.Error}",
+                    restoreSnapshot: true,
+                    discardEmptySession: sessionCreatedForEntry);
+
+            if (session.Context.State.ContainsKey("arenaSpawningRequested"))
+                session.ArenaSpawning = true;
+
+            var initialTeam = session.Context.Teams.TryGetValue(steamId, out var configuredTeam)
+                ? configuredTeam
+                : rules.EnablePvP
+                    ? zoneHash + (int)(steamId % 1000)
+                    : 0;
+            if (rules.EnablePvP)
+            {
+                session.Context.Teams[steamId] = initialTeam;
+                playerCharacter.SetTeam(initialTeam);
+            }
+
+            // Keep the participant local while runtime/arena setup is still
+            // fallible. Context membership is provisional so setup actions can
+            // resolve the entrant; RollbackFailedEntry removes it on failure.
+            var participant = new PlayerEventSession
+            {
+                SteamId = steamId,
+                SessionId = session.Context.SessionId,
+                ModeId = modeId,
+                ZoneHash = zoneHash,
+                State = PlayerSessionState.Active,
+                ActivatedAtUtc = DateTime.UtcNow,
+                TeamIndex = initialTeam
+            };
+            entryCommitStarted = true;
+            session.Context.Players.Add(steamId);
+
+            if (!session.EventRuntimeInitialized && !session.ArenaInitialized)
+            {
+                session.Context.State["arenaBuildOwnerSteamId"] = steamId;
+                session.Context.State["arenaBuildInitializedOnce"] = true;
+            }
+
+            if (!session.EventRuntimeInitialized && session.EventDefinition != null)
+            {
+                _eventRuntime.StartSession(session.EventDefinition, session.Context, session.Config, zone);
+                session.EventRuntimeInitialized = true;
+                if (session.Context.State.ContainsKey("arenaSpawningRequested"))
+                    session.ArenaSpawning = true;
+            }
+
+            // Spawn arena assets exactly once, on first successful player entry.
+            if (!session.ArenaInitialized)
+            {
+                session.ArenaInitialized = true;
+                SpawnArenaTiles(session, zone, modeId, config);
+                EnsureArenaPreparationScheduled(session, modeId);
+                BattleLuckPlugin.LogInfo($"[Session] Arena initialized for {modeId} zone {zone.Hash} on first entry ({steamId}).");
+            }
+            else if (session.Context.State.TryGetValue("arenaBuildOwnerSteamId", out var owner) && owner is ulong ownerSteamId && ownerSteamId != steamId)
+            {
+                BattleLuckPlugin.LogInfo($"[Session] Player {steamId} joined existing arena {modeId}/{zone.Hash}; geometry owner is first entrant {ownerSteamId}, no build replay.");
+            }
+
+            // Atomic managed membership commit. Everything before this point is
+            // provisional and has a compensating rollback path.
+            _playerSessions[steamId] = participant;
+            _enteredPlayers.Add(steamId);
+            _playerZoneMap[steamId] = zoneHash;
+            _zoneDetection.SetPlayerZone(steamId, zoneHash);
+            _readyPlayers.Remove(steamId);
+            _penaltyBurning.Remove(steamId);
+            entryCommitted = true;
+
+            // Post-commit integrations are isolated: a map, tracking, mode, or
+            // notification subscriber cannot turn a valid entry into a half-
+            // rolled-back command failure.
+            try { BattleLuckPlugin.ZoneMap?.HandlePlayerEnteredZone(steamId, playerCharacter, zone); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Zone-map update failed for committed entrant {steamId}: {ex.Message}"); }
+
+            try { BattleLuckPlugin.EquipmentTracker?.StartTrackingPlayer(playerCharacter); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Equipment tracking failed for committed entrant {steamId}: {ex.Message}"); }
+
+            try
+            {
+                if (session.StartWarmupActive)
+                    PreparePlayerForStartWarmup(session, playerCharacter, zone);
+
+                if (session.IsStarted)
+                {
+                    if (!_arenaTeleportedPlayers.Contains(steamId))
+                        PreparePlayerForStartWarmup(session, playerCharacter, zone);
+                    session.Mode?.OnPlayerJoin(session.Context, steamId);
+                }
+                else if (session.Context.Players.Count >= rules.MinPlayers)
+                {
+                    EnsureArenaPreparationScheduled(session, modeId);
+                }
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogWarning($"[Session] Post-commit warmup/mode callback failed for {steamId}: {ex.Message}");
+            }
+
+            GameEvents.RaiseZoneEnter(new ZoneEnterEvent
+            {
+                PlayerEntity = playerCharacter,
+                SteamId = steamId,
+                ZoneId = zone.Name,
+                SessionId = session.Context.SessionId
+            });
+
+            try
+            {
+                if (FlowController.TryGetUser(playerCharacter, out var user))
+                    NotificationHelper.NotifyPlayer(user, $"Entered {zone.Name}. Loadout applied.");
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogWarning($"[Session] Entry notification failed for {steamId}: {ex.Message}");
+            }
+
+            BattleLuckPlugin.LogInfo($"[Session] Player {EntityExtensions.FormatPlayer(steamId, playerCharacter)} entered zone {zone.Name} ({modeId}) via toggle-enter.");
+            return OperationResult.Ok();
         }
-        catch
+        catch (Exception ex)
         {
-            _enteringPlayers.Remove(steamId);
-            throw;
+            if (entryCommitted)
+            {
+                BattleLuckPlugin.LogError($"[Session] Non-critical post-commit entry failure for {steamId}: {ex}");
+                return OperationResult.Ok();
+            }
+
+            return RollbackFailedEntry(
+                steamId,
+                playerCharacter,
+                zoneHash,
+                previousDetectedZoneHash,
+                session,
+                ex.Message,
+                restoreSnapshot: entryPreparationAttempted,
+                discardEmptySession: sessionCreatedForEntry || entryCommitStarted,
+                exception: ex);
         }
         finally
         {
-            session.Context.State.Remove(returnPositionKey);
-        }
-
-        if (!enterResult.Success)
-        {
             _enteringPlayers.Remove(steamId);
-            return OperationResult.Fail($"Enter failed: {enterResult.Error}");
+            session?.Context.State.Remove(returnPositionKey);
         }
+    }
 
-        if (session.Context.State.ContainsKey("arenaSpawningRequested"))
-            session.ArenaSpawning = true;
-
-        // Mark as properly entered
-        _enteredPlayers.Add(steamId);
+    OperationResult RollbackFailedEntry(
+        ulong steamId,
+        Entity playerCharacter,
+        int zoneHash,
+        int previousDetectedZoneHash,
+        ActiveSession? session,
+        string failure,
+        bool restoreSnapshot,
+        bool discardEmptySession,
+        Exception? exception = null)
+    {
         _enteringPlayers.Remove(steamId);
-        _playerZoneMap[steamId] = zoneHash;
-        _zoneDetection.SetPlayerZone(steamId, zoneHash);
         _readyPlayers.Remove(steamId);
+        _enteredPlayers.Remove(steamId);
+        _arenaTeleportedPlayers.Remove(steamId);
         _penaltyBurning.Remove(steamId);
+        _playerZoneMap.Remove(steamId);
+        _playerSessions.Remove(steamId);
+        _recentlyDied.Remove(steamId);
+        _offlineTicks.Remove(steamId);
+        _pendingArenaRespawns.Remove(steamId);
 
-        session.Context.Players.Add(steamId);
-
-        // Add EventParticipant component
-        var em = VRisingCore.EntityManager;
-        if (playerCharacter.Exists() && !em.HasComponent<EventParticipant>(playerCharacter))
+        if (session?.Context != null)
         {
-            em.AddComponentData(playerCharacter, new EventParticipant
+            session.Context.Players.Remove(steamId);
+            session.Context.Teams.Remove(steamId);
+            RemoveStagedEnterAction(session.Context, steamId);
+        }
+
+        try { FloorLockService.UnlockPlayer(steamId); }
+        catch (Exception cleanupEx) { BattleLuckPlugin.LogWarning($"[Session] Floor-lock cleanup failed while rolling back entry for {steamId}: {cleanupEx.Message}"); }
+
+        try { BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId); }
+        catch (Exception cleanupEx) { BattleLuckPlugin.LogWarning($"[Session] Equipment tracking cleanup failed while rolling back entry for {steamId}: {cleanupEx.Message}"); }
+
+        try
+        {
+            _zoneDetection.SetPlayerZone(steamId, previousDetectedZoneHash);
+        }
+        catch (Exception zoneEx)
+        {
+            BattleLuckPlugin.LogWarning($"[Session] Could not restore zone tracking while rolling back entry for {steamId}: {zoneEx.Message}");
+        }
+
+        var snapshotRestored = false;
+        if (restoreSnapshot)
+        {
+            try
             {
-                SessionEntity = session.SessionEntity,
-                SessionId = session.Context.SessionId,
-                DeathCount = 0,
-                Eliminated = false,
-                TeamIndex = session.Context.Teams.TryGetValue(steamId, out var team) ? team : 0
-            });
+                if (playerCharacter.Exists() && _playerState.HasSnapshot(steamId))
+                {
+                    snapshotRestored = _playerState.RestoreSnapshot(playerCharacter, zoneHash);
+                    if (!snapshotRestored)
+                        BattleLuckPlugin.LogError($"[Session] Entry rollback could not restore the snapshot for {steamId}.");
+                }
+            }
+            catch (Exception restoreEx)
+            {
+                BattleLuckPlugin.LogError($"[Session] Entry rollback snapshot restore failed for {steamId}: {restoreEx}");
+            }
+
+            if (!snapshotRestored && session?.Config?.Session?.Rules?.EnablePvP == true && playerCharacter.Exists())
+            {
+                try { playerCharacter.SetTeam(0); }
+                catch (Exception teamEx) { BattleLuckPlugin.LogWarning($"[Session] Entry rollback team reset failed for {steamId}: {teamEx.Message}"); }
+            }
         }
 
-        BattleLuckPlugin.ZoneMap?.HandlePlayerEnteredZone(steamId, playerCharacter, zone);
-        BattleLuckPlugin.EquipmentTracker?.StartTrackingPlayer(playerCharacter);
+        var detail = exception?.ToString() ?? failure;
+        BattleLuckPlugin.LogWarning($"[Session] Entry rolled back for {steamId}: {detail}");
 
-        if (!session.EventRuntimeInitialized && !session.ArenaInitialized)
+        if (discardEmptySession && session != null && session.Context.Players.Count == 0)
+            DiscardEmptySessionAfterEntryRollback(session, zoneHash);
+
+        return OperationResult.Fail($"Event entry failed and was rolled back: {failure}");
+    }
+
+    void DiscardEmptySessionAfterEntryRollback(ActiveSession session, int zoneHash)
+    {
+        if (!_activeSessions.TryGetValue(zoneHash, out var active) || !ReferenceEquals(active, session))
+            return;
+
+        try
         {
-            session.Context.State["arenaBuildOwnerSteamId"] = steamId;
-            session.Context.State["arenaBuildInitializedOnce"] = true;
+            _eventRuntime.AbortSession(session.Context.SessionId);
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[Session] Runtime cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}");
         }
 
-        if (!session.EventRuntimeInitialized && session.EventDefinition != null)
+        try { session.Spawner.DespawnAll(); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Spawn cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}"); }
+
+        try { session.BorderDot?.Reset(); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Boundary cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}"); }
+
+        if (EventGeometryMutationsEnabled)
         {
-            session.EventRuntimeInitialized = true;
-            _eventRuntime.StartSession(session.EventDefinition, session.Context, session.Config, zone);
-            if (session.Context.State.ContainsKey("arenaSpawningRequested"))
-                session.ArenaSpawning = true;
+            try
+            {
+                session.Border?.DespawnWalls();
+                session.Border?.DespawnFloors();
+                session.Platform?.DespawnPlatform();
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogWarning($"[Session] Geometry cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}");
+            }
         }
 
-        // Spawn arena assets exactly once, on first successful player entry.
-        if (!session.ArenaInitialized)
+        try
         {
-            session.ArenaInitialized = true;
-            SpawnArenaTiles(session, zone, modeId, config);
-            EnsureArenaPreparationScheduled(session, modeId);
-            BattleLuckPlugin.LogInfo($"[Session] Arena initialized for {modeId} zone {zone.Hash} on first entry ({steamId}).");
+            var schematicCleanup = SchematicLoader.ClearTrackingGroup(session.Context.SessionId);
+            if (!schematicCleanup.Success)
+                BattleLuckPlugin.LogWarning($"[Session] Schematic cleanup failed for rolled-back empty session {session.Context.SessionId}: {schematicCleanup.Error}");
         }
-        else if (session.Context.State.TryGetValue("arenaBuildOwnerSteamId", out var owner) && owner is ulong ownerSteamId && ownerSteamId != steamId)
+        catch (Exception ex)
         {
-            BattleLuckPlugin.LogInfo($"[Session] Player {steamId} joined existing arena {modeId}/{zone.Hash}; geometry owner is first entrant {ownerSteamId}, no build replay.");
+            BattleLuckPlugin.LogWarning($"[Session] Schematic cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}");
         }
 
-        if (session.StartWarmupActive)
-            PreparePlayerForStartWarmup(session, playerCharacter, zone);
-
-        if (session.IsStarted)
+        try
         {
-            if (!_arenaTeleportedPlayers.Contains(steamId))
-                PreparePlayerForStartWarmup(session, playerCharacter, zone);
-            session.Mode?.OnPlayerJoin(session.Context, steamId);
+            var em = VRisingCore.EntityManager;
+            if (session.SessionEntity != Entity.Null && em.Exists(session.SessionEntity))
+                em.DestroyEntity(session.SessionEntity);
         }
-        else if (session.Context.Players.Count >= rules.MinPlayers)
+        catch (Exception ex)
         {
-            EnsureArenaPreparationScheduled(session, modeId);
+            BattleLuckPlugin.LogWarning($"[Session] Entity cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}");
         }
 
-        BattleLuckPlugin.LogInfo($"[Session] Player {EntityExtensions.FormatPlayer(steamId, playerCharacter)} entered zone {zone.Name} ({modeId}) via toggle-enter.");
-        return OperationResult.Ok();
+        try { _autoTrash.UnregisterZone(zoneHash); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Auto-trash cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}"); }
+
+        _activeSessions.Remove(zoneHash);
+        _pendingEnd.RemoveAll(hash => hash == zoneHash);
+        try
+        {
+            if (!_activeSessions.Values.Any(s => s.Context?.State.ContainsKey("freeBuildEnabled") == true))
+                global::BuildingRestrictionController.EnableRestrictions();
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[Session] Building-restriction cleanup failed for rolled-back empty session {session.Context.SessionId}: {ex.Message}");
+        }
+
+        BattleLuckPlugin.LogInfo($"[Session] Removed empty session {session.Context.SessionId} after entry rollback.");
+    }
+
+    static void RemoveStagedEnterAction(GameModeContext context, ulong steamId)
+    {
+        if (!context.State.TryGetValue(StagedEnterPlayersStateKey, out var value) || value is not HashSet<ulong> staged)
+            return;
+
+        staged.Remove(steamId);
+        if (staged.Count == 0)
+            context.State.Remove(StagedEnterPlayersStateKey);
     }
 
     OperationResult ExecuteLeaveFlow(ulong steamId, Entity playerCharacter, int zoneHash)
@@ -424,7 +703,10 @@ public sealed class SessionController
         // Execute exit flow: clear kit → restore snapshot
         var exitResult = _flow.ExecuteExit(config, playerCharacter, zone, session.Context);
         if (!exitResult.Success)
+        {
             BattleLuckPlugin.LogError($"[Session] Exit flow failed for {EntityExtensions.FormatPlayer(steamId, playerCharacter)}: {exitResult.Error}");
+            return OperationResult.Fail($"Event exit failed; your session remains active so restoration can be retried: {exitResult.Error}");
+        }
 
         // Clean up player tracking
         CleanupPlayerState(steamId, session);
@@ -439,15 +721,11 @@ public sealed class SessionController
         _arenaTeleportedPlayers.Remove(steamId);
         _pendingArenaRespawns.Remove(steamId);
         _playerZoneMap.Remove(steamId);
+        _playerSessions.Remove(steamId);
         _readyPlayers.Remove(steamId);
         _penaltyBurning.Remove(steamId);
         session.Context.Players.Remove(steamId);
-
-        // Remove EventParticipant component
-        var em = VRisingCore.EntityManager;
-        var playerEntity = VRisingCore.GetPlayerEntityBySteamId(steamId);
-        if (playerEntity.Exists() && em.HasComponent<EventParticipant>(playerEntity))
-            em.RemoveComponent<EventParticipant>(playerEntity);
+        session.Context.Teams.Remove(steamId);
 
         // Remove ignite visual when leaving zone
         var player = VRisingCore.GetOnlinePlayers().FirstOrDefault(e => e.IsPlayer() && e.GetSteamId() == steamId);
@@ -686,6 +964,7 @@ public sealed class SessionController
         _arenaTeleportedPlayers.Remove(steamId);
         _pendingArenaRespawns.Remove(steamId);
         _playerZoneMap.Remove(steamId);
+        _playerSessions.Remove(steamId);
         _readyPlayers.Remove(steamId);
         _penaltyBurning.Remove(steamId);
         _recentlyDied.Remove(steamId);
@@ -871,149 +1150,65 @@ public sealed class SessionController
             if (killer.IsPlayer() && killer != died)
             {
                 ulong killerId = killer.GetSteamId();
-                HandleSessionParticipantDeath(session, victimId, died, killerId, killer);
+                HandleSessionParticipantDeath(session, victimId, died, killerId);
                 return;
             }
 
             // PvE / self death
-            HandleSessionParticipantDeath(session, victimId, died, 0, Entity.Null);
+            HandleSessionParticipantDeath(session, victimId, died, 0);
             return;
         }
     }
 
-    void HandleSessionParticipantDeath(ActiveSession session, ulong victimId, Entity victimEntity, ulong killerId, Entity killerEntity)
+    void HandleSessionParticipantDeath(ActiveSession session, ulong victimId, Entity victimEntity, ulong killerId)
     {
-        var em = VRisingCore.EntityManager;
-        if (!em.HasComponent<EventParticipant>(victimEntity))
+        if (!_playerSessions.TryGetValue(victimId, out var participant) ||
+            !participant.SessionId.Equals(session.Context.SessionId, StringComparison.Ordinal))
         {
-            // Fallback for legacy modes or failed component initialization
-            session.Mode.OnPlayerDowned(session.Context, victimId, killerId);
-            if (!session.Context.Players.Contains(victimId))
-            {
-                ForceExitEliminatedPlayer(session, victimId, victimEntity);
-                return;
-            }
+            BattleLuckPlugin.LogWarning($"[Session] Managed participant state missing for {victimId} in {session.Context.SessionId}; using safe respawn fallback.");
+            try { session.Mode?.OnPlayerDowned(session.Context, victimId, killerId); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Mode downed callback failed for {victimId}: {ex.Message}"); }
             QueueImmediateArenaRespawn(session, victimId, victimEntity);
             return;
         }
 
-        var participant = em.GetComponentData<EventParticipant>(victimEntity);
-        participant.DeathCount += 1;
-        em.SetComponentData(victimEntity, participant);
+        var maxDeaths = Math.Max(1, session.Config.Rules?.MaxDeathsPerParticipant ?? 3);
+        var eliminated = participant.RegisterDeath(maxDeaths);
 
         BattleLuckPlugin.LogInfo($"[Session] death: player={victimId} session={participant.SessionId} deathCount={participant.DeathCount}");
 
         // Increment team kill counters for killer's team
-        if (killerEntity != Entity.Null && em.HasComponent<EventParticipant>(killerEntity))
+        if (killerId != 0 &&
+            _playerSessions.TryGetValue(killerId, out var killerParticipant) &&
+            killerParticipant.SessionId.Equals(session.Context.SessionId, StringComparison.Ordinal))
         {
-            var killerPart = em.GetComponentData<EventParticipant>(killerEntity);
-            IncrementTeamKill(killerPart.TeamIndex, participant.SessionEntity);
+            if (session.Context.Teams.TryGetValue(killerId, out var currentTeam))
+                killerParticipant.TeamIndex = currentTeam;
+
+            IncrementTeamKill(session, killerParticipant.TeamIndex);
         }
 
-        session.Mode.OnPlayerDowned(session.Context, victimId, killerId);
+        try { session.Mode?.OnPlayerDowned(session.Context, victimId, killerId); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Mode downed callback failed for {victimId}: {ex.Message}"); }
 
-        var rules = session.Config.Rules;
-        var maxDeaths = rules?.MaxDeathsPerParticipant ?? 3;
-
-        if (participant.DeathCount < maxDeaths)
+        if (!eliminated)
         {
-            // Queue immediate respawn inside arena via intent
-            QueueImmediateArenaRespawn(victimEntity);
+            QueueImmediateArenaRespawn(session, victimId, victimEntity);
+            return;
         }
-        else
-        {
-            // Mark eliminated and schedule rollback
-            participant.Eliminated = true;
-            em.SetComponentData(victimEntity, participant);
 
-            // Remove event kit safely via intent
-            EnqueueIntentForPlayer(victimEntity, participant.SessionEntity, "act:snapshot.restore");
-
-            // Teleport out via rollback intent
-            EnqueueIntentForPlayer(victimEntity, participant.SessionEntity, "act:event.rollback.teleport_out");
-
-            BattleLuckPlugin.LogInfo($"[Session] player.eliminated: player={victimId} session={participant.SessionId} deathCount={participant.DeathCount}");
-        }
+        participant.State = PlayerSessionState.Leaving;
+        BattleLuckPlugin.LogInfo($"[Session] player.eliminated: player={victimId} session={participant.SessionId} deathCount={participant.DeathCount}");
+        try { session.Mode?.OnPlayerEliminated(session.Context, victimId, killerId); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Mode elimination callback failed for {victimId}: {ex.Message}"); }
+        ForceExitEliminatedPlayer(session, victimId, victimEntity);
     }
 
-    void IncrementTeamKill(int teamIndex, Entity sessionEntity)
+    static void IncrementTeamKill(ActiveSession session, int teamIndex)
     {
-        // Team kill tracking is now handled via GameModeContext state
-        // using the managed player session registry.
-        // Find the session by entity and update its context state.
-        var session = _activeSessions.Values.FirstOrDefault(s => s.SessionEntity == sessionEntity);
-        if (session?.Context == null)
-            return;
-
         var teamKillsKey = $"teamKills_{teamIndex}";
         var currentKills = session.Context.State.TryGetValue(teamKillsKey, out var val) && val is int kills ? kills : 0;
-        currentKills++;
-        session.Context.State[teamKillsKey] = currentKills;
-    }
-
-    void EnqueueIntentForPlayer(Entity player, Entity sessionEntity, string actionId, string prefabGuid = "")
-    {
-        var em = VRisingCore.EntityManager;
-        var intent = em.CreateEntity(ComponentType.ReadOnly<ActionIntent>());
-        em.SetComponentData(intent, new ActionIntent
-        {
-            ActionId = actionId,
-            IntentId = Guid.NewGuid().ToString(),
-            CreatedAt = (double)DateTime.UtcNow.Ticks,
-            PrefabGuid = prefabGuid,
-            Position = Unity.Mathematics.float3.zero,
-            Rotation = 0f,
-            Caller = player,
-            EventEntity = sessionEntity
-        });
-    }
-
-    public void QueueImmediateArenaRespawn(Entity player)
-    {
-        // Create an intent entity via ECB so systems handle the actual respawn
-        var em = VRisingCore.EntityManager;
-        var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-        var intent = ecb.CreateEntity();
-        var intentComp = new ActionIntent
-        {
-            ActionId = "act:event.respawn_in_arena",
-            IntentId = Guid.NewGuid().ToString(),
-            CreatedAt = (double)DateTime.UtcNow.Ticks,
-            PrefabGuid = "",
-            Position = Unity.Mathematics.float3.zero,
-            Rotation = 0f,
-            Caller = player,
-            EventEntity = GetPlayerSessionEntity(player)
-        };
-        ecb.AddComponent(intent, intentComp);
-        ecb.Playback(em);
-        ecb.Dispose();
-    }
-
-    Entity GetPlayerSessionEntity(Entity player)
-    {
-        var em = VRisingCore.EntityManager;
-        if (em.HasComponent<EventParticipant>(player))
-            return em.GetComponentData<EventParticipant>(player).SessionEntity;
-        return Entity.Null;
-    }
-
-    void EnqueueIntent(Entity sessionEntity, Entity caller, string actionId, Entity target, string prefabGuid = "")
-    {
-        var em = VRisingCore.EntityManager;
-        var intent = em.CreateEntity(ComponentType.ReadOnly<ActionIntent>());
-        em.SetComponentData(intent, new ActionIntent
-        {
-            ActionId = actionId,
-            IntentId = Guid.NewGuid().ToString(),
-            CreatedAt = (double)DateTime.UtcNow.Ticks,
-            PrefabGuid = prefabGuid,
-            Position = Unity.Mathematics.float3.zero,
-            Rotation = 0f,
-            Caller = caller,
-            EventEntity = sessionEntity
-        });
-        // If target is needed, we might need a more complex ActionIntent or separate component
+        session.Context.State[teamKillsKey] = currentKills + 1;
     }
 
     void RouteEnemyKill(Entity died, Entity killer)
@@ -1174,9 +1369,17 @@ public sealed class SessionController
         BattleLuckPlugin.LogInfo($"[Session] HandlePenaltyDeath: {EntityExtensions.FormatPlayer(steamId, playerEntity)} — restoring snapshot.");
 
         // Restore original snapshot (saved on enter)
+        var restored = false;
         if (_playerZoneMap.TryGetValue(steamId, out var zoneHash))
         {
-            _playerState.RestoreSnapshot(playerEntity, zoneHash);
+            try { restored = _playerState.RestoreSnapshot(playerEntity, zoneHash); }
+            catch (Exception ex) { BattleLuckPlugin.LogError($"[Session] Penalty-death restore failed for {steamId}: {ex}"); }
+        }
+
+        if (!restored)
+        {
+            try { playerEntity.SetTeam(0); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Penalty-death team reset failed for {steamId}: {ex.Message}"); }
         }
 
         // Clean up from active session
@@ -1190,6 +1393,7 @@ public sealed class SessionController
             _arenaTeleportedPlayers.Remove(steamId);
             _pendingArenaRespawns.Remove(steamId);
             _playerZoneMap.Remove(steamId);
+            _playerSessions.Remove(steamId);
         }
 
         // Teleport to penalty spawn
@@ -1319,7 +1523,11 @@ public sealed class SessionController
         {
             var teams = TeamBalancer.AssignTeams(session.Context);
             if (teams.Success)
+            {
                 session.Context.State["teamsAssigned"] = true;
+                foreach (var (steamId, teamIndex) in session.Context.Teams)
+                    TryUpdatePlayerTeam(steamId, teamIndex);
+            }
             else
                 BattleLuckPlugin.LogWarning($"[Session] Team assignment failed for {session.Context.ModeId}: {teams.Error}");
         }
@@ -1377,11 +1585,29 @@ public sealed class SessionController
     public void ForceExitEliminatedPlayer(ActiveSession session, ulong steamId, Entity player)
     {
         var zoneHash = session.Context.ZoneHash;
-        RemoveZoneProtectionBuffs(player);
-        if (!_playerState.RestoreSnapshot(player, zoneHash))
+        var restored = false;
+        try
         {
-            player.SetPosition(PenaltySpawn);
-            player.HealToFull();
+            RemoveZoneProtectionBuffs(player);
+            restored = _playerState.RestoreSnapshot(player, zoneHash);
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogError($"[Session] Elimination restore failed for {steamId}: {ex}");
+        }
+
+        if (!restored)
+        {
+            try
+            {
+                player.SetTeam(0);
+                player.SetPosition(PenaltySpawn);
+                player.HealToFull();
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogError($"[Session] Elimination fallback placement failed for {steamId}: {ex.Message}");
+            }
         }
 
         _enteredPlayers.Remove(steamId);
@@ -1390,12 +1616,37 @@ public sealed class SessionController
         _readyPlayers.Remove(steamId);
         _penaltyBurning.Remove(steamId);
         _playerZoneMap.Remove(steamId);
+        _playerSessions.Remove(steamId);
+        _recentlyDied.Remove(steamId);
+        _offlineTicks.Remove(steamId);
+        session.Context.Players.Remove(steamId);
         session.Context.Teams.Remove(steamId);
-        FloorLockService.UnlockPlayer(steamId);
-        BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId);
-        session.Context.Broadcast?.Invoke(NotificationHelper.ColorizeText(
-            $"{ResolvePlayerName(steamId)} reached the death limit and was returned to the saved position.",
-            "#FF6B6B"));
+
+        if (session.Context.Players.Count == 0 && !_pendingEnd.Contains(zoneHash))
+            _pendingEnd.Add(zoneHash);
+
+        try { _zoneDetection.SetPlayerZone(steamId, 0); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Zone cleanup failed for eliminated player {steamId}: {ex.Message}"); }
+
+        try { session.Mode?.OnPlayerLeave(session.Context, steamId); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Mode leave callback failed for eliminated player {steamId}: {ex.Message}"); }
+
+        try { FloorLockService.UnlockPlayer(steamId); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Floor-lock cleanup failed for eliminated player {steamId}: {ex.Message}"); }
+
+        try { BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId); }
+        catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Equipment tracking cleanup failed for eliminated player {steamId}: {ex.Message}"); }
+
+        try
+        {
+            session.Context.Broadcast?.Invoke(NotificationHelper.ColorizeText(
+                $"{ResolvePlayerName(steamId)} reached the death limit and was returned to the saved position.",
+                "#FF6B6B"));
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[Session] Elimination notification failed for {steamId}: {ex.Message}");
+        }
     }
 
     static string ResolvePlayerName(ulong steamId)
@@ -1472,6 +1723,20 @@ public sealed class SessionController
         var rules = session.Config.Session.Rules;
         var staging = ResolveActionStagingRules(session.Config);
         session.StartWarmupActive = false;
+
+        if (staging.Enabled && staging.StageOnZoneEnter && staging.ReleaseOnMatchStart)
+        {
+            var stagedResult = ReleaseStagedEnterActions(session, zone);
+            if (!stagedResult.Success)
+            {
+                BattleLuckPlugin.LogError($"[Session] Match start cancelled for {session.Context.SessionId}: {stagedResult.Error}");
+                session.Context.State["result"] = "staged_enter_failed";
+                if (!_pendingEnd.Contains(session.Context.ZoneHash))
+                    _pendingEnd.Add(session.Context.ZoneHash);
+                return;
+            }
+        }
+
         session.IsStarted = true;
         if (session.StartForced ||
             (rules.AllowAdminSoloTest && session.Context.Players.Count <= Math.Max(1, rules.AdminTestMinPlayers)))
@@ -1485,9 +1750,6 @@ public sealed class SessionController
 
         session.Context.TechState = new SessionTechState();
         session.Context.State["techMutationsDisabled"] = true;
-
-        if (staging.Enabled && staging.StageOnZoneEnter && staging.ReleaseOnMatchStart)
-            ReleaseStagedEnterActions(session, zone);
 
         foreach (var player in VRisingCore.GetOnlinePlayers().Where(e => e.Exists() && e.IsPlayer() && session.Context.Players.Contains(e.GetSteamId())))
             _flow.ExecuteStart(session.Config, player, zone, session.Context);
@@ -1608,13 +1870,13 @@ public sealed class SessionController
         GetOrCreateStagedEnterSet(session.Context).Add(steamId);
     }
 
-    void ReleaseStagedEnterActions(ActiveSession session, ZoneDefinition zone)
+    OperationResult ReleaseStagedEnterActions(ActiveSession session, ZoneDefinition zone)
     {
         if (!HasConfiguredFlow(session.Config.FlowEnter))
-            return;
+            return OperationResult.Ok();
 
         if (!session.Context.State.TryGetValue(StagedEnterPlayersStateKey, out var value) || value is not HashSet<ulong> staged || staged.Count == 0)
-            return;
+            return OperationResult.Ok();
 
         var players = VRisingCore.GetOnlinePlayers()
             .Where(e => e.Exists() && e.IsPlayer() && staged.Contains(e.GetSteamId()))
@@ -1622,6 +1884,8 @@ public sealed class SessionController
 
         foreach (var player in players)
         {
+            var steamId = player.GetSteamId();
+            var preparedKey = $"entryPrepared:{steamId}";
             var context = new FlowActionContext
             {
                 PlayerCharacter = player,
@@ -1633,12 +1897,23 @@ public sealed class SessionController
                 GameContext = session.Context
             };
 
-            var result = _actionExecutor.ExecuteFlow(session.Config.FlowEnter, context, rollbackOnFailure: false);
-            if (!result.Success)
-                BattleLuckPlugin.LogWarning($"[Session] Staged enter action release failed for {EntityExtensions.FormatPlayer(player.GetSteamId(), player)}: {result.Error}");
+            try
+            {
+                // Preserve the snapshot captured at initial entry. A configured
+                // snapshot.save action must not overwrite it at match start.
+                session.Context.State[preparedKey] = true;
+                var result = _actionExecutor.ExecuteFlow(session.Config.FlowEnter, context, rollbackOnFailure: false);
+                if (!result.Success)
+                    return OperationResult.Fail($"Staged enter flow failed for {EntityExtensions.FormatPlayer(steamId, player)}: {result.Error}");
+            }
+            finally
+            {
+                session.Context.State.Remove(preparedKey);
+            }
         }
 
         session.Context.State.Remove(StagedEnterPlayersStateKey);
+        return OperationResult.Ok();
     }
 
     // ── Session management ──────────────────────────────────────────────
@@ -1766,6 +2041,7 @@ public sealed class SessionController
                 _arenaTeleportedPlayers.Remove(steamId);
                 _pendingArenaRespawns.Remove(steamId);
                 _playerZoneMap.Remove(steamId);
+                _playerSessions.Remove(steamId);
                 FloorLockService.UnlockPlayer(steamId);
                 BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId);
             }
@@ -1804,6 +2080,7 @@ public sealed class SessionController
             .Where(kv => kv.Value == zoneHash)
             .Select(kv => kv.Key)
             .Union(session.Context.Players)
+            .Union(_playerSessions.Where(kv => kv.Value.ZoneHash == zoneHash).Select(kv => kv.Key))
             .Distinct()
             .ToList();
 
@@ -1828,9 +2105,12 @@ public sealed class SessionController
             _readyPlayers.Remove(steamId);
             _penaltyBurning.Remove(steamId);
             _playerZoneMap.Remove(steamId);
+            _playerSessions.Remove(steamId);
             _recentlyDied.Remove(steamId);
-            FloorLockService.UnlockPlayer(steamId);
-            BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId);
+            try { FloorLockService.UnlockPlayer(steamId); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Floor-lock cleanup failed during session restore for {steamId}: {ex.Message}"); }
+            try { BattleLuckPlugin.EquipmentTracker?.StopTrackingPlayer(steamId); }
+            catch (Exception ex) { BattleLuckPlugin.LogWarning($"[Session] Equipment tracking cleanup failed during session restore for {steamId}: {ex.Message}"); }
 
             if (!online.TryGetValue(steamId, out var player) || !player.Exists())
             {
@@ -1838,16 +2118,34 @@ public sealed class SessionController
                 continue;
             }
 
-            RemoveZoneProtectionBuffs(player);
-            if (_playerState.RestoreSnapshot(player, zoneHash))
+            var playerRestored = false;
+            try
+            {
+                RemoveZoneProtectionBuffs(player);
+                playerRestored = _playerState.RestoreSnapshot(player, zoneHash);
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogError($"[Session] End-of-session restore failed for {steamId}: {ex}");
+            }
+
+            if (playerRestored)
             {
                 restored++;
                 continue;
             }
 
-            player.SetPosition(fallbackSpawn);
-            player.HealToFull();
-            fallback++;
+            try
+            {
+                player.SetPosition(fallbackSpawn);
+                player.SetTeam(0);
+                player.HealToFull();
+                fallback++;
+            }
+            catch (Exception ex)
+            {
+                BattleLuckPlugin.LogError($"[Session] End-of-session fallback failed for {steamId}: {ex}");
+            }
         }
 
         BattleLuckPlugin.LogInfo($"[Session] End rollback for {session.Context.ModeId}/{zoneHash}: restored={restored}, fallbackSpawn={fallback}, offline={offline}.");

@@ -91,6 +91,7 @@ public sealed class EventDefinitionLoader
             Description = string.Empty,
             Version = int.TryParse(definition.Metadata.Version, out var version) ? version : 1,
             KitId = modeId,
+            UsesManagedPlayerLifecycle = true,
             KitConfig = KitController.LoadKit(modeId) ?? new KitConfig(),
             Session = new SessionConfig
             {
