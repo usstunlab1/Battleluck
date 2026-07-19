@@ -37,6 +37,7 @@ internal static class Core
     public static AIAssistant? AIAssistant { get; internal set; }
     public static AiGroupProjectMLlmBridge? AiGroupProjectMBridge { get; internal set; }
     public static NpcControlService? NpcService { get; internal set; }
+    public static PlayerStateController? PlayerState { get; internal set; }
     public static PlayerLoadoutService? PlayerLoadouts { get; internal set; }
     public static PlayerProgressionService? Progression { get; internal set; }
     public static TeleportService? Teleports { get; internal set; }

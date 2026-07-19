@@ -1213,7 +1213,7 @@ public static class PlayerCommands
                 return true;
             }
 
-            PlayerRollbackCommands.RollbackPlayer(ctx, words.Count > 2 ? words[2] : "self", words.Count > 3 ? words[3] : "");
+            PlayerRollbackCommands.RollbackPlayer(ctx, words.Count > 2 ? words[2] : "self");
             return true;
         }
 

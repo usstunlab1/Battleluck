@@ -42,6 +42,7 @@ public class BattleLuckPlugin : BasePlugin
     public static AIAssistant? AIAssistant { get => Core.AIAssistant; private set => Core.AIAssistant = value; }
     public static AiGroupProjectMLlmBridge? AiGroupProjectMBridge { get => Core.AiGroupProjectMBridge; private set => Core.AiGroupProjectMBridge = value; }
     public static NpcControlService? NpcService { get => Core.NpcService; private set => Core.NpcService = value; }
+    public static PlayerStateController? PlayerState { get => Core.PlayerState; private set => Core.PlayerState = value; }
     public static PlayerLoadoutService? PlayerLoadouts { get => Core.PlayerLoadouts; private set => Core.PlayerLoadouts = value; }
     public static PlayerProgressionService? Progression { get => Core.Progression; private set => Core.Progression = value; }
     public static TeleportService? Teleports { get => Core.Teleports; private set => Core.Teleports = value; }
@@ -521,6 +522,7 @@ public class BattleLuckPlugin : BasePlugin
                 BroadcastToSession ??= (_, message) => NotificationHelper.NotifyAll(message, NotificationHelper.NotificationLevel.Info);
 
                 var playerState = new PlayerStateController();
+                PlayerState = playerState;
                 PlayerLoadouts = new PlayerLoadoutService(playerState);
                 Progression = new PlayerProgressionService();
                 Teleports = new TeleportService();

@@ -1,13 +1,12 @@
 using BattleLuck.Services;
-using BattleLuck.Services.Runtime;
 using BattleLuck.Commands;
 using Unity.Entities;
 using VampireCommandFramework;
 
 /// <summary>
 /// Per-player event rollback commands. These invoke the existing authoritative
-/// rollback flow in SessionController, which handles:
-/// - Rollback via PlayerStateController
+/// rollback flow in PlayerStateController, which handles:
+/// - Rollback via snapshot restore
 /// - Snapshot deletion on success
 /// - Snapshot retention on failure
 /// </summary>
@@ -25,17 +24,28 @@ public static class PlayerRollbackCommands
         }
 
         var steamId = player.GetSteamId();
-        var result = BattleLuckPlugin.Session?.RollbackPlayer(steamId, player)
-            ?? BattleLuckPlugin.PlayerLoadouts?.Restore(player, 0) == true
-                ? OperationResult.Ok()
-                : OperationResult.Fail("Session controller is not initialized and no loadout service available.");
-
-        if (!result.Success)
+        var playerState = BattleLuckPlugin.PlayerState;
+        
+        if (playerState == null)
         {
-            ctx.Reply($"❌ Player rollback failed: {result.Error}");
+            ctx.Reply("❌ Player state controller is not initialized.");
             return;
         }
 
+        if (!playerState.HasSnapshot(steamId))
+        {
+            ctx.Reply($"❌ No snapshot found for player {player.GetPlayerName()}.");
+            return;
+        }
+
+        var restored = playerState.RestoreSnapshot(player, 0);
+        if (!restored)
+        {
+            ctx.Reply($"❌ Player rollback failed: could not restore snapshot.");
+            return;
+        }
+
+        playerState.ClearSnapshot(steamId);
         ctx.Reply($"✅ Rolled back {player.GetPlayerName()} and cleared the player snapshot.");
     }
 
@@ -47,10 +57,10 @@ public static class PlayerRollbackCommands
             return;
         }
 
-        var session = BattleLuckPlugin.Session;
-        if (session == null)
+        var playerState = BattleLuckPlugin.PlayerState;
+        if (playerState == null)
         {
-            ctx.Reply("❌ Session controller is not initialized.");
+            ctx.Reply("❌ Player state controller is not initialized.");
             return;
         }
 
@@ -64,14 +74,51 @@ public static class PlayerRollbackCommands
         foreach (var player in online)
         {
             var steamId = player.GetSteamId();
-            var result = session.RollbackPlayer(steamId, player);
-            if (result.Success)
-                restored++;
-            else
+            if (!playerState.HasSnapshot(steamId))
+            {
                 failed++;
+                continue;
+            }
+
+            var result = playerState.RestoreSnapshot(player, 0);
+            if (result)
+            {
+                playerState.ClearSnapshot(steamId);
+                restored++;
+            }
+            else
+            {
+                failed++;
+            }
         }
 
         ctx.Reply($"🛡️ Server player-state rollback: restored={restored}, failed={failed}.");
+    }
+
+    public static void Status(ChatCommandContext ctx)
+    {
+        var playerState = BattleLuckPlugin.PlayerState;
+        if (playerState == null)
+        {
+            ctx.Reply("❌ Player state controller is not initialized.");
+            return;
+        }
+
+        var snapshots = playerState.ListSnapshots();
+        if (snapshots.Count == 0)
+        {
+            ctx.Reply("No player snapshots are currently stored.");
+            return;
+        }
+
+        ctx.Reply($"📊 Player snapshots stored: {snapshots.Count}");
+        foreach (var snap in snapshots.Take(10))
+        {
+            var player = VRisingCore.GetOnlinePlayers()
+                .FirstOrDefault(p => p.GetSteamId() == ulong.Parse(snap.PlayerId));
+            var name = player.Exists() ? player.GetPlayerName() : snap.PlayerId;
+            ctx.Reply($"- {name}: {snap.Inventory.Count} items, {snap.Buffs.Count} buffs, zone={snap.ZoneHash}");
+        }
     }
 
     static bool TryResolveOnline(string selector, out Entity player)
