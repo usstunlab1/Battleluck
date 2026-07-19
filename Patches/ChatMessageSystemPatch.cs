@@ -44,7 +44,7 @@ public static class ChatMessageSystemPatch
                     var steamId = copiedUser.PlatformId;
                     var playerName = copiedUser.CharacterName.ToString();
 
-                    _ = copiedFromCharacter; // Documents that FromCharacter was copied intentionally.
+                    _ = copiedFromCharacter;
 
                     if (steamId == 0 || string.IsNullOrWhiteSpace(message))
                         continue;
@@ -97,7 +97,7 @@ public static class ChatMessageSystemPatch
         string playerName,
         string request)
     {
-        _ = playerName; // Kept in the observed signature for diagnostics and future audit context.
+        _ = playerName;
 
         if (!AiChannelState.TryBeginRequest(steamId))
         {
@@ -106,6 +106,8 @@ public static class ChatMessageSystemPatch
                 "Your previous request is still processing.");
             return;
         }
+
+        var cancellationToken = AiChannelState.GetRequestCancellationToken(steamId);
 
         try
         {
@@ -124,6 +126,12 @@ public static class ChatMessageSystemPatch
                 source: "native_ai_channel",
                 broadcastToInGameChat: false).ConfigureAwait(false);
 
+            // HandleDirectQuery does not currently accept a cancellation token. The
+            // channel still owns one so disconnect/off/shutdown can suppress stale
+            // continuations and future provider overloads can receive it directly.
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
             if (!string.IsNullOrWhiteSpace(reply))
                 AiChannelMessageService.BroadcastAiReply(reply);
         }
@@ -132,9 +140,12 @@ public static class ChatMessageSystemPatch
             BattleLuckPlugin.LogWarning(
                 $"[AI Channel] Request failed for {steamId}: {ex.Message}");
 
-            AiChannelMessageService.SendError(
-                steamId,
-                "The AI provider is temporarily unavailable.");
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                AiChannelMessageService.SendError(
+                    steamId,
+                    "The AI provider is temporarily unavailable.");
+            }
         }
         finally
         {
