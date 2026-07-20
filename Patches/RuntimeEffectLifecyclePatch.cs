@@ -6,6 +6,11 @@ namespace BattleLuck.Patches;
 /// <summary>
 /// Connects request-scoped effects to the existing SessionController lifecycle.
 /// No second timer, session manager, or ECS system is created.
+///
+/// Player snapshot restoration already removes temporary player buffs. Session-
+/// owned border/spawn/group effects must remain alive when one participant leaves,
+/// so this patch cleans them only on timeout, explicit removal, session end, or
+/// server shutdown.
 /// </summary>
 [HarmonyPatch]
 public static class RuntimeEffectLifecyclePatch
@@ -15,25 +20,6 @@ public static class RuntimeEffectLifecyclePatch
     static void TickPostfix()
     {
         RuntimeEffectActionService.TickAll();
-    }
-
-    [HarmonyPatch(typeof(global::SessionController), "ExecuteLeaveFlow")]
-    [HarmonyPrefix]
-    static void ExecuteLeaveFlowPrefix(
-        ulong steamId,
-        int zoneHash,
-        object ____activeSessions)
-    {
-        if (RuntimeEffectActionService.TryGetSessionContext(____activeSessions, zoneHash, out var context) && context != null)
-            RuntimeEffectActionService.CleanupPlayer(steamId, context.SessionId);
-    }
-
-    [HarmonyPatch(typeof(global::SessionController), "CleanupPlayerState")]
-    [HarmonyPrefix]
-    static void CleanupPlayerStatePrefix(ulong steamId, object session)
-    {
-        var context = session?.GetType().GetProperty("Context")?.GetValue(session) as BattleLuck.Models.GameModeContext;
-        RuntimeEffectActionService.CleanupPlayer(steamId, context?.SessionId);
     }
 
     [HarmonyPatch(typeof(global::SessionController), "EndSession")]
