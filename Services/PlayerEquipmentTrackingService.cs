@@ -15,8 +15,15 @@ public sealed class PlayerEquipmentTrackingService
 {
     readonly Dictionary<ulong, TrackedPlayerEquipment> _tracked = new();
 
-    public void StartTrackingPlayer(Entity player) =>
-        StartTrackingEvent(player, eventRunId: "", eventId: "");
+    public void StartTrackingPlayer(Entity player)
+    {
+        var steamId = player.GetSteamId();
+        var snapshot = steamId == 0 ? null : global::Core.PlayerState?.GetSnapshot(steamId);
+        StartTrackingEvent(
+            player,
+            snapshot?.EventRunId ?? "",
+            snapshot?.EventModeId ?? "");
+    }
 
     public bool StartTrackingEvent(Entity player, string eventRunId, string eventId)
     {
