@@ -775,19 +775,7 @@ namespace BattleLuck.Services
     public IReadOnlyList<PlayerSnapshot> ListSnapshots()
     {
         var snapshots = new List<PlayerSnapshot>();
-        if (!Directory.Exists(SnapshotDir))
-            return snapshots;
-
-        foreach (var path in Directory.GetFiles(SnapshotDir, "*.json"))
-        {
-            var name = Path.GetFileNameWithoutExtension(path);
-            if (!ulong.TryParse(name, out var steamId))
-                continue;
-            var snapshot = GetSnapshot(steamId);
-            if (snapshot != null)
-                snapshots.Add(snapshot);
-        }
-
+        snapshots.AddRange(SnapshotPersistence.ListAll());
         return snapshots;
     }
 
@@ -800,9 +788,9 @@ namespace BattleLuck.Services
     public void ClearAll()
     {
         _cache.Clear();
-        if (Directory.Exists(SnapshotDir))
+        if (Directory.Exists(SnapshotPersistence.DirectoryPath))
         {
-            foreach (var file in Directory.GetFiles(SnapshotDir, "*.json"))
+            foreach (var file in Directory.GetFiles(SnapshotPersistence.DirectoryPath, "*.json"))
             {
                 try { File.Delete(file); } catch { }
             }
@@ -811,16 +799,16 @@ namespace BattleLuck.Services
 
     // ── File persistence ────────────────────────────────────────────────
 
-    static string GetPath(ulong steamId) => Path.Combine(SnapshotDir, $"{steamId}.json");
-
-    static bool FileExists(ulong steamId) => File.Exists(GetPath(steamId));
+    static bool FileExists(ulong steamId) =>
+        SnapshotPersistence.Exists(steamId, true) ||
+        SnapshotPersistence.Exists(steamId, false) ||
+        File.Exists(Path.Combine(SnapshotPersistence.DirectoryPath, $"{steamId}.json"));
 
     void WriteToDisk(ulong steamId, PlayerSnapshot snap)
     {
         try
         {
-            var json = JsonSerializer.Serialize(snap, JsonOpts);
-            File.WriteAllText(GetPath(steamId), json);
+            SnapshotPersistence.Write(steamId, snap, snap.ZoneHash > 0);
         }
         catch (Exception ex)
         {
@@ -830,30 +818,13 @@ namespace BattleLuck.Services
 
     static PlayerSnapshot? ReadFromDisk(ulong steamId)
     {
-        var path = GetPath(steamId);
-        if (!File.Exists(path)) return null;
-        try
-        {
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<PlayerSnapshot>(json, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-        }
-        catch (Exception ex)
-        {
-            BattleLuckPlugin.LogError($"[PlayerState] Failed to read snapshot for {steamId}: {ex.Message}");
-            return null;
-        }
+        return SnapshotPersistence.Read(steamId, true) ?? SnapshotPersistence.Read(steamId, false);
     }
 
     static void DeleteFromDisk(ulong steamId)
     {
-        var path = GetPath(steamId);
-        if (File.Exists(path))
-        {
-            try { File.Delete(path); } catch { }
-        }
+        SnapshotPersistence.Delete(steamId, true);
+        SnapshotPersistence.Delete(steamId, false);
     }
 
     static class PlayerSnapshotMetrics

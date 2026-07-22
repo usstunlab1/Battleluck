@@ -9,6 +9,7 @@ using Xunit;
 
 namespace BattleLuck.Tests.Services;
 
+[Collection("Snapshot persistence")]
 public class PlayerStateControllerTests : IDisposable
 {
     private readonly string _snapshotDir;

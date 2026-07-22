@@ -45,7 +45,7 @@ public sealed class CastleObjectResolver
     /// </summary>
     public bool TryResolve(CastleObjectKey key, out Entity entity)
     {
-        entity = Entity.Null;
+        entity = default;
         if (key == null || !key.IsValid()) return false;
         if (!IsWorldReady || !VRisingCore.IsReady) return false;
 

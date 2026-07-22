@@ -6,6 +6,8 @@
 - Added the canonical event ledger, deterministic scoring/results, AI-lite, optional local LLM, Developer Bridge, ZUI packet projection, and BattleLuck-only diagnostics.
 - Fixed static command-container discovery so `.bl` commands register on a dedicated server.
 - Registered runtime effect actions before event validation so `aievent` and `bloodbath` load without false unknown-action failures.
+- Enabled the complete 89-test suite with zero skips using server interop or NuGet reference assembly resolution.
+- Unified categorized player snapshot persistence and removed native ECS access from offline castle-policy verification paths.
 - Removed obsolete client/sidecar, webhook, Discord, AI logger, and unreachable legacy command code.
 
 ## 1.0.0

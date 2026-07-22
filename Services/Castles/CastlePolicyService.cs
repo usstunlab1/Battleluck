@@ -303,7 +303,7 @@ public sealed class CastlePolicyService : IDisposable
 
     AuthorizationResult AuthorizeForTarget(ulong actorSteamId, bool isAdmin, CastleObjectKey key, out Entity entity, out string resolveError)
     {
-        entity = Entity.Null;
+        entity = default;
         resolveError = "";
         if (key == null || !key.IsValid())
             return new AuthorizationResult { Success = false, Error = "Target key is invalid." };

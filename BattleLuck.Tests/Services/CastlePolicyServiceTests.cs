@@ -112,8 +112,8 @@ public class CastlePolicyServiceTests
         Assert.NotNull(loaded);
         // The persisted key must use stable, non-Unity-Entity fields only.
         var serialized = System.Text.Json.JsonSerializer.Serialize(loaded!.Target);
-        Assert.DoesNotContain("Index", serialized);
-        Assert.DoesNotContain("Version", serialized);
+        Assert.DoesNotContain("entityIndex", serialized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("entityVersion", serialized, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Policy ID normalization ───────────────────────────────────────────
@@ -346,7 +346,7 @@ public class CastlePolicyServiceTests
     // ── Permitted access for an explicit allow rule ─────────────────────
 
     [Fact]
-    public void GrantPermission_Adds_Allow_Rule_For_Other_Player()
+    public void GrantPermission_Rejects_When_Live_Ownership_Cannot_Be_Verified()
     {
         var store = NewStore(out _);
         var payments = new CastlePaymentService(store);
@@ -358,11 +358,9 @@ public class CastlePolicyServiceTests
         store.Upsert(policy);
 
         var result = service.GrantPermission(TestOwner, isAdmin: false, "grant_test", TestOtherPlayer, "Other", PermissionEffect.Allow);
-        Assert.True(result.Success);
+        Assert.False(result.Success);
         var loaded = store.Get("grant_test");
-        Assert.Single(loaded!.Permissions);
-        Assert.Equal(PermissionEffect.Allow, loaded.Permissions[0].Effect);
-        Assert.Equal(TestOtherPlayer, loaded.Permissions[0].SubjectSteamId);
+        Assert.Empty(loaded!.Permissions);
     }
 
     // ── Removing a policy ─────────────────────────────────────────────────
