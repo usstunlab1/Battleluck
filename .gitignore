@@ -42,6 +42,14 @@ my-first-site/
 gg/
 NGG/
 
+# Supabase sidecar and private local state
+# Keep the entire unrelated messaging product, migrations, local database,
+# generated bundles, project references, and credentials out of BattleLuck Git.
+messaging-app/
+supabase/
+**/supabase/
+.supabase/
+
 # MCP servers
 mcp-servers/embedder/
 mcp-servers/server-monitor/
