@@ -148,34 +148,39 @@ public static class RuntimeEffectActionCatalog
             if (valueType == null)
                 return;
 
-            foreach (var descriptor in Entries.Values)
-            {
-                if (dictionary.Contains(descriptor.Name))
-                    continue;
-
-                var entry = Activator.CreateInstance(valueType);
-                if (entry == null)
-                    continue;
-
-                Set(entry, "Name", descriptor.Name);
-                Set(entry, "Category", "effect");
-                Set(entry, "Description", descriptor.Description);
-                Set(entry, "RiskLevel", descriptor.RiskLevel);
-                Set(entry, "RequiresApproval", descriptor.RequiresApproval);
-                Set(entry, "HandlerAvailable", true);
-                Set(entry, "Executable", true);
-                Set(entry, "MainThreadRequired", true);
-                Set(entry, "Availability", "available");
-                AddStrings(entry, "Required", descriptor.Required);
-                AddStrings(entry, "Optional", descriptor.Optional);
-                AddStrings(entry, "Examples", descriptor.Examples);
-
-                dictionary[descriptor.Name] = entry;
-            }
+            InjectEntries(dictionary, valueType);
         }
         catch (Exception ex)
         {
             BattleLuckPlugin.LogWarning($"[RuntimeEffects] Could not inject action catalog entries: {ex.Message}");
+        }
+    }
+
+    public static void InjectEntries(IDictionary dictionary, Type valueType)
+    {
+        foreach (var descriptor in Entries.Values)
+        {
+            if (dictionary.Contains(descriptor.Name))
+                continue;
+
+            var entry = Activator.CreateInstance(valueType);
+            if (entry == null)
+                continue;
+
+            Set(entry, "Name", descriptor.Name);
+            Set(entry, "Category", "effect");
+            Set(entry, "Description", descriptor.Description);
+            Set(entry, "RiskLevel", descriptor.RiskLevel);
+            Set(entry, "RequiresApproval", descriptor.RequiresApproval);
+            Set(entry, "HandlerAvailable", true);
+            Set(entry, "Executable", true);
+            Set(entry, "MainThreadRequired", true);
+            Set(entry, "Availability", "available");
+            AddStrings(entry, "Required", descriptor.Required);
+            AddStrings(entry, "Optional", descriptor.Optional);
+            AddStrings(entry, "Examples", descriptor.Examples);
+
+            dictionary[descriptor.Name] = entry;
         }
     }
 

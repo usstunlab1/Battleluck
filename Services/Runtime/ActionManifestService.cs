@@ -56,6 +56,10 @@ public sealed class ActionManifestService
         LoadCatalogMetadata();
         AddLiveSystemEntries();
         ApplyRequiredFallbacks();
+        // These handlers are supplied by the server runtime rather than the
+        // owner-editable JSON catalog. Inject them before event definitions are
+        // validated; Harmony is patched later in plugin startup.
+        RuntimeEffectActionCatalog.EnsureInjected(this);
     }
 
     void LoadCatalogMetadata()

@@ -2,7 +2,11 @@
 
 ## 1.1.2
 
-- Added `commands.txt` quick reference file with copy-paste friendly commands for build, test, docker, git, and project analysis.
+- Consolidated commands under the native server-side `.bl` tree with `.ai.dev` compatibility.
+- Added the canonical event ledger, deterministic scoring/results, AI-lite, optional local LLM, Developer Bridge, ZUI packet projection, and BattleLuck-only diagnostics.
+- Fixed static command-container discovery so `.bl` commands register on a dedicated server.
+- Registered runtime effect actions before event validation so `aievent` and `bloodbath` load without false unknown-action failures.
+- Removed obsolete client/sidecar, webhook, Discord, AI logger, and unreachable legacy command code.
 
 ## 1.0.0
 

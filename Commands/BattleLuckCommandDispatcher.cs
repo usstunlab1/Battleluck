@@ -30,7 +30,9 @@ public sealed class BattleLuckCommandDispatcher
         {
             foreach (var type in assembly.GetTypes())
             {
-                if (!type.IsClass || type.IsAbstract || type.IsGenericType)
+                // Static command containers are abstract+sealed in CLR metadata.
+                // Exclude only true abstract base classes, not static classes.
+                if (!CommandDiscoveryRules.IsCommandContainer(type))
                     continue;
 
                 foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
