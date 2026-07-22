@@ -1,7 +1,6 @@
 using BattleLuck.Commands;
 using BattleLuck.Services.AI;
 using BattleLuck.Services.Assistant;
-using BattleLuck.Services.Practice;
 using VampireCommandFramework;
 
 namespace BattleLuck.Commands.Chat;
@@ -60,9 +59,6 @@ public static class BattleLuckRootCommands
             return;
         }
 
-        if (TryHandleSoloPractice(ctx, request))
-            return;
-
         GameChatAiBridge.BeginSession(ctx.SenderSteamId);
         try
         {
@@ -112,29 +108,6 @@ public static class BattleLuckRootCommands
             : text.StartsWith("request ", StringComparison.OrdinalIgnoreCase)
                 ? text["request ".Length..].Trim()
                 : text;
-
-    static bool TryHandleSoloPractice(BattleLuckCommandContext ctx, string request)
-    {
-        var parts = request.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0 || !parts[0].Equals("practice", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        if (!ctx.IsAdmin)
-        {
-            ctx.Reply("Solo practice is an admin-only command.");
-            return true;
-        }
-
-        var mode = parts.Length > 1 ? parts[1] : "";
-        var result = mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
-            ? SoloPracticeService.Instance.Stop(ctx.SenderSteamId)
-            : SoloPracticeService.Instance.Start(ctx.SenderCharacterEntity, ctx.SenderSteamId, mode);
-        ctx.Reply(result.Success
-            ? (mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
-                ? "Solo practice NPC removed."
-                : $"Solo practice AI is starting in {mode} mode.")
-            : result.UserMessage);
-        return true;
     }
 }
-}
+
