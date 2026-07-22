@@ -16,11 +16,8 @@ namespace BattleLuck.Services
     {
         public const int KitRollbackZoneHash = -999;
 
-        static readonly string SnapshotDir = Path.Combine(
-            BepInEx.Paths.BepInExRootPath, "data", "BattleLuck", "snapshots");
-
         static readonly string RecoveryDir = Path.Combine(
-            BepInEx.Paths.BepInExRootPath, "config", "BattleLuck", "runtime", "player-recovery");
+            GetBepInExRootPath(), "config", "BattleLuck", "runtime", "player-recovery");
 
     static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -32,8 +29,14 @@ namespace BattleLuck.Services
 
     public PlayerStateController()
     {
-        Directory.CreateDirectory(SnapshotDir);
+        Directory.CreateDirectory(SnapshotPersistence.DirectoryPath);
         Directory.CreateDirectory(RecoveryDir);
+    }
+
+    static string GetBepInExRootPath()
+    {
+        try { return BepInEx.Paths.BepInExRootPath ?? AppContext.BaseDirectory; }
+        catch { return AppContext.BaseDirectory; }
     }
 
     /// <summary>Save full 13-category entity state for a player.</summary>

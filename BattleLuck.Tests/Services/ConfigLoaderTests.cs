@@ -16,7 +16,7 @@ public class ConfigLoaderTests
         return root;
     }
 
-    [Fact(Skip = "ConfigLoader static logging touches Unity types; skip in unit environment")]
+    [Fact]
     public void LoadMerchantCommandConfig_MissingOptionalFile_ReturnsDefaults()
     {
         var root = CreateTempRoot();
@@ -35,7 +35,7 @@ public class ConfigLoaderTests
         }
     }
 
-    [Fact(Skip = "ConfigLoader static logging touches Unity types; skip in unit environment")]
+    [Fact]
     public void LoadAIConfig_MalformedJson_FallsBackToDefaults()
     {
         var root = CreateTempRoot();

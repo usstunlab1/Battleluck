@@ -32,6 +32,8 @@ public static class SnapshotPersistence
 
     static readonly string SnapshotDir = Path.Combine(GetBepInExRootPath(), "data", "BattleLuck", "snapshots");
 
+    public static string DirectoryPath => SnapshotDir;
+
     public static string GetPath(ulong steamId, bool isEvent)
         => Path.Combine(SnapshotDir, isEvent ? $"{steamId}_event.json" : $"{steamId}_regular.json");
 
