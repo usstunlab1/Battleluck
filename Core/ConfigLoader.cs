@@ -141,130 +141,13 @@ public static class ConfigLoader
 
     static void ApplyEnvOverrides(AIConfig config)
     {
-        if (config == null) return;
-        var cloudflareToken = Env.Get("CLOUDFLARE_AI_API_TOKEN");
-        if (IsUsableConfigValue(cloudflareToken))
-            config.CloudflareAI.ApiToken = cloudflareToken!;
-        else if (!string.IsNullOrWhiteSpace(cloudflareToken))
-            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder CLOUDFLARE_AI_API_TOKEN.");
-        var cloudflareAccountId = Env.Get("CLOUDFLARE_AI_ACCOUNT_ID");
-        if (IsUsableConfigValue(cloudflareAccountId))
-            config.CloudflareAI.AccountId = cloudflareAccountId!;
-        var cloudflareGatewayId = Env.Get("CLOUDFLARE_AI_GATEWAY_ID");
-        if (IsUsableConfigValue(cloudflareGatewayId))
-            config.CloudflareAI.GatewayId = cloudflareGatewayId!;
-        var cloudflareModel = Env.Get("CLOUDFLARE_AI_MODEL");
-        if (IsUsableConfigValue(cloudflareModel))
-            config.CloudflareAI.Model = cloudflareModel!;
-        var cloudflareTimeout = Env.Get("CLOUDFLARE_AI_TIMEOUT_SECONDS");
-        if (!string.IsNullOrWhiteSpace(cloudflareTimeout) && int.TryParse(cloudflareTimeout, out var timeout))
-            config.CloudflareAI.TimeoutSeconds = timeout;
-        var llamaKey = FirstEnv("LLAMA_API_KEY", "META_LLAMA_API_KEY");
-        if (IsUsableConfigValue(llamaKey))
-            config.LlamaAPI.ApiKey = llamaKey!;
-        else if (!string.IsNullOrWhiteSpace(llamaKey))
-            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder Llama API key.");
-        var llamaModel = FirstEnv("LLAMA_API_MODEL", "META_LLAMA_MODEL");
-        if (IsUsableConfigValue(llamaModel))
-            config.LlamaAPI.Model = llamaModel!;
-        var llamaBaseUrl = FirstEnv("LLAMA_API_BASE_URL", "META_LLAMA_BASE_URL");
-        if (IsUsableConfigValue(llamaBaseUrl))
-            config.LlamaAPI.BaseUrl = llamaBaseUrl!;
-        var llamaTimeout = Env.Get("LLAMA_API_TIMEOUT_SECONDS");
+        var llamaModel = Env.Get("BATTLELUCK_LOCAL_LLM_MODEL");
+        if (!string.IsNullOrWhiteSpace(llamaModel)) config.LlamaAPI.Model = llamaModel.Trim();
+        var llamaBaseUrl = Env.Get("BATTLELUCK_LOCAL_LLM_URL");
+        if (!string.IsNullOrWhiteSpace(llamaBaseUrl)) config.LlamaAPI.BaseUrl = llamaBaseUrl.Trim();
+        var llamaTimeout = Env.Get("BATTLELUCK_LOCAL_LLM_TIMEOUT_SECONDS");
         if (!string.IsNullOrWhiteSpace(llamaTimeout) && int.TryParse(llamaTimeout, out var llamaTimeoutSeconds))
             config.LlamaAPI.TimeoutSeconds = llamaTimeoutSeconds;
-        var googleKey = FirstEnv("GOOGLE_AI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "GOOGLE_AI_STUDIO_API_KEY");
-        if (IsUsableConfigValue(googleKey))
-            config.GoogleAIStudio.ApiKey = googleKey!;
-        else if (!string.IsNullOrWhiteSpace(googleKey))
-            BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring placeholder Google AI API key.");
-        var googleModel = Env.Get("GOOGLE_AI_MODEL");
-        if (IsUsableConfigValue(googleModel))
-            config.GoogleAIStudio.Model = googleModel!;
-        var sidecarUrl = Env.Get("BATTLE_AI_SIDECAR_URL");
-        if (IsUsableConfigValue(sidecarUrl))
-            config.Sidecar.BaseUrl = sidecarUrl!;
-        var sidecarAuthKey = Env.Get("BATTLE_AI_SIDECAR_AUTH_KEY");
-        if (IsUsableConfigValue(sidecarAuthKey))
-            config.Sidecar.AuthKey = sidecarAuthKey!;
-        var webhook = Env.Get("MESSAGING_DISCORD_WEBHOOK_URL");
-        if (!string.IsNullOrWhiteSpace(webhook))
-        {
-            if (Uri.TryCreate(webhook, UriKind.Absolute, out var webhookUri) &&
-                (webhookUri.Scheme == Uri.UriSchemeHttp || webhookUri.Scheme == Uri.UriSchemeHttps) &&
-                !string.IsNullOrWhiteSpace(webhookUri.Host))
-                config.Messaging.DiscordWebhookUrl = webhookUri.AbsoluteUri;
-            else
-                BattleLuckPlugin.LogInfo("[ConfigLoader] Ignoring invalid MESSAGING_DISCORD_WEBHOOK_URL: not a valid absolute URI.");
-        }
-    }
-
-    public static DiscordBridgeConfig? LoadDiscordBridgeConfig()
-    {
-        EnsureDefaultsDeployed();
-        var path = Path.Combine(ConfigRoot, "discord_bridge.json");
-        return LoadJson<DiscordBridgeConfig>(path, optional: true);
-    }
-
-    public static WebhookConfig? LoadWebhookConfig()
-    {
-        EnsureDefaultsDeployed();
-        var path = Path.Combine(ConfigRoot, "webhook.json");
-        return LoadJson<WebhookConfig>(path);
-    }
-
-    static string? FirstEnv(params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            var value = Env.Get(key);
-            if (!string.IsNullOrWhiteSpace(value))
-                return value;
-        }
-        return null;
-    }
-
-    static bool IsUsableConfigValue(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-        var upper = value.Trim().ToUpperInvariant();
-        return !(upper.Contains("REPLACE-WITH") ||
-                 upper.Contains("REPLACE_WITH") ||
-                 upper.Contains("PLACEHOLDER") ||
-                 upper.Contains("YOUR_") ||
-                 upper.Contains("TOKEN_HERE") ||
-                 upper.Contains("API_KEY_HERE") ||
-                 upper.Contains("CHANGE_ME") ||
-                 upper.Contains("CHANGEME") ||
-                 upper.Contains("DUMMY") ||
-                 upper.Contains("HMAC_SECRET"));
-    }
-
-    public static AiLoggerConfig? LoadAiLoggerConfig()
-    {
-        EnsureDefaultsDeployed();
-        var path = Path.Combine(ConfigRoot, "ai_logger.json");
-        var config = LoadJson<AiLoggerConfig>(path);
-        if (config != null)
-            ApplyAiLoggerEnvOverrides(config);
-        return config;
-    }
-
-    static void ApplyAiLoggerEnvOverrides(AiLoggerConfig config)
-    {
-        var googleKey = Env.Get("GOOGLE_AI_API_KEY");
-        if (!string.IsNullOrWhiteSpace(googleKey))
-            config.Providers.Gemini.ApiKey = googleKey;
-        var sidecarKey = Env.Get("BATTLE_AI_SIDECAR_AUTH_KEY");
-        if (!string.IsNullOrWhiteSpace(sidecarKey))
-            config.Providers.SuperuserSidecar.ApiKey = sidecarKey;
-        var sidecarUrl = Env.Get("BATTLE_AI_SIDECAR_URL");
-        if (!string.IsNullOrWhiteSpace(sidecarUrl))
-            config.Providers.SuperuserSidecar.Url = sidecarUrl;
-        var discordWebhook = Env.Get("MESSAGING_DISCORD_WEBHOOK_URL");
-        if (!string.IsNullOrWhiteSpace(discordWebhook))
-            config.Discord.WebhookUrl = discordWebhook;
     }
 
     public static TechCatalog LoadTechCatalog()
@@ -292,13 +175,6 @@ public static class ConfigLoader
             BattleLuckPlugin.LogInfo($"[ConfigLoader] Failed to load tech_catalog.json: {ex.Message}");
         }
         return new TechCatalog();
-    }
-
-    public static MCPRuntimeSettings? LoadMCPConfig()
-    {
-        EnsureDefaultsDeployed();
-        var path = Path.Combine(ConfigRoot, "mcp_config.json");
-        return LoadJson<MCPRuntimeSettings>(path);
     }
 
     public static ActionConfig LoadActionConfig()

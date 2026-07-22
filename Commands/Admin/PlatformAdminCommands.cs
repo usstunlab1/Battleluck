@@ -68,4 +68,32 @@ public static class PlatformAdminCommands
         var result = await Models.InstallAsync(new Uri(config.LocalUrl), config.Model).ConfigureAwait(false);
         BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(ctx.SenderSteamId, result);
     }
+
+    [BattleLuckCommand("bl admin event validate", description: "Validate a unified event definition", adminOnly: true)]
+    public static void ValidateEvent(BattleLuckCommandContext ctx, string eventId = "")
+    {
+        if (string.IsNullOrWhiteSpace(eventId)) { ctx.Reply("Usage: .bl admin event validate <event>"); return; }
+        var found = new BattleLuck.Services.Runtime.EventDefinitionLoader().TryLoad(eventId, out var definition, out var validation);
+        ctx.Reply(!found ? $"Event '{eventId}' was not found." : validation.Success && definition != null
+            ? $"Event '{eventId}' is valid; zones={definition.Zones.Count}; actions={BattleLuck.Services.Runtime.EventDefinitionLoader.CountActions(definition)}."
+            : $"Event '{eventId}' rejected: {string.Join("; ", validation.Errors)}");
+    }
+
+    [BattleLuckCommand("bl admin event start", description: "Start an event for the administrator", adminOnly: true)]
+    public static void StartEvent(BattleLuckCommandContext ctx, string eventId = "")
+    {
+        if (BattleLuckPlugin.GameModes?.Resolve(eventId) == null) { ctx.Reply($"Unknown event '{eventId}'."); return; }
+        var result = BattleLuckPlugin.Session?.ForceStart(eventId, ctx.SenderCharacterEntity)
+                     ?? OperationResult.Fail("Event runtime is unavailable.");
+        ctx.Reply(result.Success ? $"Event '{eventId}' start is queued." : result.UserMessage);
+    }
+
+    [BattleLuckCommand("bl admin event stop", description: "Stop all runs for an event", adminOnly: true)]
+    public static void StopEvent(BattleLuckCommandContext ctx, string eventId = "")
+    {
+        if (string.IsNullOrWhiteSpace(eventId)) { ctx.Reply("Usage: .bl admin event stop <event>"); return; }
+        if (BattleLuckPlugin.Session == null) { ctx.Reply("Event runtime is unavailable."); return; }
+        BattleLuckPlugin.Session.ForceEndByModeId(eventId);
+        ctx.Reply($"Event '{eventId}' stopped; cleanup and restoration were requested.");
+    }
 }

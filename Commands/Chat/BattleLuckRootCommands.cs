@@ -82,7 +82,7 @@ public static class BattleLuckRootCommands
         if (service == null) { ctx.Reply("Result service is not ready."); return; }
         var result = selector.Equals("last", StringComparison.OrdinalIgnoreCase) ? service.GetLast() : service.Get(selector);
         if (result == null) { ctx.Reply("No matching result was found."); return; }
-        var winner = result.Winner == null ? "none" : $"{result.Winner.Type} {result.Winner.Id} ({result.Winner.Score})";
+        var winner = FormatWinner(result);
         ctx.Reply($"{result.ModeId} ended {result.EndedUtc:u}; winner {winner}; participants {result.Standings.Count}.");
     }
 
@@ -141,4 +141,16 @@ public static class BattleLuckRootCommands
         !string.IsNullOrWhiteSpace(player.CharacterName)
             ? player.CharacterName
             : $"player-{index + 1}";
+
+    static string FormatWinner(EventResult result)
+    {
+        if (result.Winner == null) return "none";
+        if (result.Winner.Type.Equals("team", StringComparison.OrdinalIgnoreCase))
+            return $"team {result.Winner.Id} ({result.Winner.Score})";
+
+        var standing = result.Standings.FirstOrDefault(value =>
+            value.SteamId.ToString().Equals(result.Winner.Id, StringComparison.Ordinal));
+        var displayName = standing == null ? "player" : DisplayPlayer(standing.SteamId, 0);
+        return $"{displayName} ({result.Winner.Score})";
+    }
 }

@@ -50,4 +50,21 @@ public static class DeveloperBridgeCommands
 
     [BattleLuckCommand("bl admin dev revoke", description: "Revoke developer access and confirmations", adminOnly: true)]
     public static void Revoke(BattleLuckCommandContext ctx) { Bridge.Revoke(ctx.SenderSteamId); ctx.Reply("Developer access revoked."); }
+
+    [BattleLuckCommand("bl admin dev enter", description: "Enter the isolated developer arena", adminOnly: true)]
+    public static void Enter(BattleLuckCommandContext ctx)
+    {
+        var result = BattleLuckPlugin.DevSession?.EnterDevMode(ctx.SenderCharacterEntity, ctx.SenderSteamId)
+                     ?? OperationResult.Fail("Developer session service is unavailable.");
+        ctx.Reply(result.Success ? "Entered the isolated developer arena." : result.UserMessage);
+    }
+
+    [BattleLuckCommand("bl admin dev exit", description: "Exit the developer arena and restore state", adminOnly: true)]
+    public static void Exit(BattleLuckCommandContext ctx)
+    {
+        Bridge.Revoke(ctx.SenderSteamId);
+        var result = BattleLuckPlugin.DevSession?.ExitDevMode(ctx.SenderCharacterEntity, ctx.SenderSteamId)
+                     ?? OperationResult.Fail("Developer session service is unavailable.");
+        ctx.Reply(result.Success ? "Developer arena exited; access revoked and player state restored." : result.UserMessage);
+    }
 }

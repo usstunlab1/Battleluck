@@ -5,7 +5,6 @@ using System.Reflection;
 using ProjectM;
 using ProjectM.Network;
 using Unity.Entities;
-using BattleLuck.Services.AI;
 
 namespace BattleLuck.Commands;
 
@@ -38,6 +37,10 @@ public sealed class BattleLuckCommandDispatcher
                 {
                     var attr = method.GetCustomAttribute<BattleLuckCommandAttribute>();
                     if (attr == null) continue;
+                    if (!attr.Name.Equals("bl", StringComparison.OrdinalIgnoreCase) &&
+                        !attr.Name.StartsWith("bl ", StringComparison.OrdinalIgnoreCase) &&
+                        !attr.Name.StartsWith("ai.dev", StringComparison.OrdinalIgnoreCase))
+                        continue;
 
                     if (method.ReturnType != typeof(void) &&
                         method.ReturnType != typeof(OperationResult) &&
@@ -131,7 +134,7 @@ public sealed class BattleLuckCommandDispatcher
         if (!VRisingCore.IsReady)
             return false;
 
-        var message = GameChatAiBridge.ExtractMessage(chatEvent);
+        var message = chatEvent.MessageText.ToString();
         if (string.IsNullOrWhiteSpace(message))
             return false;
 

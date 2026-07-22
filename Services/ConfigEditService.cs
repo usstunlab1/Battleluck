@@ -394,9 +394,6 @@ public sealed class ConfigEditService
                 return fileName switch
                 {
                     "ai_config.json" => updatedElement.Deserialize<AIConfig>() != null,
-                    "discord_bridge.json" => updatedElement.Deserialize<DiscordBridgeConfig>() != null,
-                    "webhook.json" => updatedElement.Deserialize<WebhookConfig>() != null,
-                    "ai_logger.json" => updatedElement.Deserialize<AiLoggerConfig>() != null,
                     "mcp_config.json" => updatedElement.Deserialize<MCPRuntimeSettings>() != null,
                      "kit_grant_rules.json" => updatedElement.Deserialize<KitGrantRulesConfig>() != null,
                     "special_item.json" => updatedElement.Deserialize<SpecialItemConfig>() != null,

@@ -11,8 +11,9 @@ public sealed class ServerEventPlatformTests : IDisposable
     [Fact]
     public void Ledger_recovers_only_a_truncated_final_record()
     {
-        var ledger = new EventLedger(Path.Combine(_root, "ledger"));
+        using var ledger = new EventLedger(Path.Combine(_root, "ledger"));
         ledger.Append(new GameEventEnvelope { EventId = BattleLuckEventIds.EventStarted, EventRunId = "run-1", Sequence = 1 });
+        ledger.Close("run-1");
         File.AppendAllText(ledger.GetPath("run-1"), "{\"event_id\":");
 
         var recovered = ledger.ReadRecoverable("run-1");
@@ -24,7 +25,7 @@ public sealed class ServerEventPlatformTests : IDisposable
     [Fact]
     public void Ledger_rejects_corruption_before_the_final_record()
     {
-        var ledger = new EventLedger(Path.Combine(_root, "ledger"));
+        using var ledger = new EventLedger(Path.Combine(_root, "ledger"));
         Directory.CreateDirectory(Path.GetDirectoryName(ledger.GetPath("run-2"))!);
         var valid = JsonSerializer.Serialize(new GameEventEnvelope { EventId = "event.ended", EventRunId = "run-2" });
         File.WriteAllText(ledger.GetPath("run-2"), "not-json\n" + valid + "\n");

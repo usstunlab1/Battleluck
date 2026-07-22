@@ -64,9 +64,6 @@ public class BattleLuckPlugin : BasePlugin
     public static BossScalingService? BossScaling { get => Core.BossScaling; private set => Core.BossScaling = value; }
     public static PortalService? Portals { get => Core.Portals; private set => Core.Portals = value; }
     public static CreatureCaptureService? CreatureCapture { get => Core.CreatureCapture; private set => Core.CreatureCapture = value; }
-    static DiscordBridgeController? _discordBridge;
-    static AiLoggerController? _aiLogger;
-    static WebhookController? _webhookController;
     static ClanTaskGameAdapter? _clanTaskGameAdapter;
 
     /// <summary>Broadcast a message to all online players (stub — wire to server API).</summary>
@@ -77,42 +74,16 @@ public class BattleLuckPlugin : BasePlugin
     static readonly object _initLock = new();
     static bool _coreInitializationInProgress;
     static EntityQuery? _playerQuery;
-    static AiHologramService? _hologramService;
-    static LocalAiRuntimeManager? _localAiRuntime;
     public static bool IsInitialized => Core.IsInitialized;
-    public static bool IsDiscordBridgeEnabled => _discordBridge?.IsRunning == true;
+    public static bool IsDiscordBridgeEnabled => false;
 
     public static void SetAIAssistant(AIAssistant? assistant)
     {
         AIAssistant = assistant;
-        if (assistant == null)
-        {
-            AiGroupProjectMBridge?.Dispose();
-            AiGroupProjectMBridge = null;
-            return;
-        }
-
-        if (AiGroupProjectMBridge == null)
-        {
-            AiGroupProjectMBridge = new AiGroupProjectMLlmBridge();
-            AiGroupProjectMBridge.Initialize(ProjectMEventRouter.Instance);
-        }
     }
 
-    public static void SetHologramService(AiHologramService? service)
-    {
-        AIAssistant?.SetHologramService(service);
-    }
-
-    public static void PostToDiscordLogs(string message)
-    {
-        _discordBridge?.PostToLogs(message);
-    }
-
-    public static void PostToDiscordChatVip(string message)
-    {
-        _discordBridge?.PostToChatVip(message);
-    }
+    public static void PostToDiscordLogs(string message) { }
+    public static void PostToDiscordChatVip(string message) { }
 
     public static bool TryNotifyPlayerBySteamId(ulong steamId, string message)
     {
@@ -242,7 +213,6 @@ public class BattleLuckPlugin : BasePlugin
             }
 
         BattleLuck.Commands.BattleLuckCommandDispatcher.EnsureScanned();
-        CommandRegistry.RegisterAll(typeof(BattleLuckPlugin).Assembly);
 
         Log?.LogInfo($"[BattleLuck] Loaded - {gameModes.GetRegisteredModes().Count} game modes registered. Waiting for server world...");
     }
@@ -396,42 +366,6 @@ public class BattleLuckPlugin : BasePlugin
             catch (Exception ex)
             {
                 Log?.LogWarning($"[BattleLuck] Tick error in AI task/history cleanup: {ex.Message}");
-            }
-
-            try
-            {
-                _hologramService?.UpdateHolograms();
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning($"[BattleLuck] Tick error in HologramService.UpdateHolograms: {ex.Message}");
-            }
-
-            try
-            {
-                _discordBridge?.DrainMainThreadQueue();
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning($"[BattleLuck] Tick error in _discordBridge.DrainMainThreadQueue: {ex.Message}");
-            }
-
-            try
-            {
-                _webhookController?.DrainMainThreadQueue();
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning($"[BattleLuck] Tick error in _webhookController.DrainMainThreadQueue: {ex.Message}");
-            }
-
-            try
-            {
-                _aiLogger?.Tick();
-            }
-            catch (Exception ex)
-            {
-                Log?.LogWarning($"[BattleLuck] Tick error in _aiLogger.Tick: {ex.Message}");
             }
 
             try
@@ -607,114 +541,16 @@ public class BattleLuckPlugin : BasePlugin
                 Cleanup = new SessionCleanupService();
                 Log?.LogInfo("[BattleLuck] Session cleanup service initialized.");
 
-                // Initialize Discord bridge companion endpoint
-                try
-                {
-                    var discordConfig = ConfigLoader.LoadDiscordBridgeConfig();
-                    if (discordConfig?.Enabled == true)
-                    {
-                        _discordBridge = new DiscordBridgeController();
-                        _discordBridge.Configure(discordConfig);
-                        _discordBridge.Start();
-                        if (_discordBridge.IsRunning)
-                        {
-                            Log?.LogInfo($"[BattleLuck] Discord bridge enabled on port {discordConfig.Port}");
-                        }
-                        else
-                        {
-                            _discordBridge.Dispose();
-                            _discordBridge = null;
-                            Log?.LogWarning("[BattleLuck] Discord bridge was configured but did not start; Discord forwarding is disabled.");
-                        }
-                    }
-                    else
-                    {
-                        _discordBridge?.Dispose();
-                        _discordBridge = null;
-                        Log?.LogInfo("[BattleLuck] Discord bridge disabled in configuration");
-                    }
-                }
-                catch (Exception discordEx)
-                {
-                    _discordBridge?.Dispose();
-                    _discordBridge = null;
-                    Log?.LogWarning($"[BattleLuck] Failed to initialize Discord bridge: {discordEx.Message}");
-                }
-
-                // Initialize external webhook endpoint
-                try
-                {
-                    var webhookConfig = ConfigLoader.LoadWebhookConfig();
-                    if (webhookConfig?.Enabled == true)
-                    {
-                        _webhookController = new WebhookController();
-                        _webhookController.Configure(webhookConfig);
-                        _webhookController.Start();
-                    }
-                    else
-                    {
-                        Log?.LogInfo("[BattleLuck] Webhook endpoint disabled in configuration");
-                    }
-                }
-                catch (Exception webhookEx)
-                {
-                    _webhookController?.Dispose();
-                    _webhookController = null;
-                    Log?.LogWarning($"[BattleLuck] Failed to initialize webhook endpoint: {webhookEx.Message}");
-                }
-
                 // Initialize AI Assistant
                 try
                 {
                     var aiConfig = ConfigLoader.LoadAIConfig();
 
-                    // Wire Discord webhook for full mod log forwarding
-                    BattleLuckLogger.SetDiscordWebhook(IsDiscordBridgeEnabled
-                        ? aiConfig.Messaging.DiscordWebhookUrl
-                        : null);
-
-                    var provider = aiConfig.Provider.ToLowerInvariant();
-
                     if (aiConfig.Enabled)
                     {
-                        _localAiRuntime?.Dispose();
-                        _localAiRuntime = new LocalAiRuntimeManager();
-                        _localAiRuntime.Start(aiConfig);
-
-                        _hologramService = new AiHologramService(VRisingCore.EntityManager);
                         AIAssistant = new AIAssistant();
                         AIAssistant.Initialize(aiConfig);
-                        // Wire hologram service to AIAssistant
-                        SetHologramService(_hologramService);
-
-                        AiGroupProjectMBridge?.Dispose();
-                        AiGroupProjectMBridge = new AiGroupProjectMLlmBridge();
-                        AiGroupProjectMBridge.Initialize(ProjectMEventRouter.Instance);
-
-                        var providerSummary = AIAssistant.ActiveProvider.Equals("local", StringComparison.OrdinalIgnoreCase)
-                            ? "Static catalog fallback (cannot execute commands or generate event changes)"
-                            : provider == "auto"
-                                ? $"Auto AI provider ({AIAssistant.ActiveProvider})"
-                                : provider == "llama" || provider == "llama_api" || provider == "meta_llama"
-                                    ? $"Local Llama ({aiConfig.LlamaAPI.Model} @ {aiConfig.LlamaAPI.BaseUrl})"
-                                    : provider == "cloudflare"
-                                        ? $"Cloudflare AI Workers ({aiConfig.CloudflareAI.Model})"
-                                        : AIAssistant.IsSidecarConfigured
-                                                ? $"Google AI Studio + battle sidecar ({AIAssistant.SidecarBaseUrl})"
-                                                : "Google AI Studio";
-
-                        var chain = new StringBuilder();
-                        chain.Append(providerSummary);
-                        if (provider == "cloudflare" && aiConfig.GoogleAIStudio.FallbackModels.Count > 0 && !string.IsNullOrWhiteSpace(aiConfig.GoogleAIStudio.ApiKey))
-                            chain.Append(" | failover: Google AI Studio (");
-                        if (provider == "google" && aiConfig.GoogleAIStudio.FallbackModels.Count > 0)
-                            chain.Append(" | fallbacks: ").Append(string.Join(", ", aiConfig.GoogleAIStudio.FallbackModels));
-                        if (AIAssistant.IsSidecarConfigured)
-                            chain.Append(" | sidecar: on");
-                        if (AIAssistant.IsMCPRuntimeHealthy)
-                            chain.Append(" | mcp: ").Append(AIAssistant.MCPServerCount).Append(" server(s)");
-
-                        Log?.LogInfo($"[BattleLuck] AI Assistant initialized successfully with {chain}");
+                        Log?.LogInfo($"[BattleLuck] Optional local assistant initialized: {aiConfig.LlamaAPI.Model} at loopback endpoint; AI-lite remains authoritative fallback.");
                     }
                     else
                     {
@@ -723,32 +559,9 @@ public class BattleLuckPlugin : BasePlugin
                 }
                 catch (Exception aiEx)
                 {
-                    try { AiGroupProjectMBridge?.Dispose(); } catch { }
-                    AiGroupProjectMBridge = null;
                     try { AIAssistant?.Shutdown(); } catch { }
                     AIAssistant = null;
-                    try { _localAiRuntime?.Dispose(); } catch { }
-                    _localAiRuntime = null;
-                    _hologramService = null;
                     Log?.LogWarning($"[BattleLuck] Failed to initialize AI Assistant: {aiEx.Message}");
-                }
-
-                // Initialize AI Logger (game event → AI summary → Discord webhook)
-                try
-                {
-                    var aiLoggerConfig = ConfigLoader.LoadAiLoggerConfig();
-                    if (aiLoggerConfig?.Enabled == true)
-                    {
-                        _aiLogger = new AiLoggerController();
-                        _aiLogger.Configure(aiLoggerConfig);
-                        Log?.LogInfo("[BattleLuck] AI Logger initialized");
-                    }
-                }
-                catch (Exception loggerEx)
-                {
-                    _aiLogger?.Dispose();
-                    _aiLogger = null;
-                    Log?.LogWarning($"[BattleLuck] Failed to initialize AI Logger: {loggerEx.Message}");
                 }
 
                 // Initialize ECS Query Registry (cached queries for performance)
@@ -853,16 +666,6 @@ public class BattleLuckPlugin : BasePlugin
         AiGroupProjectMBridge = null;
         try { AIAssistant?.Shutdown(); } catch { }
         AIAssistant = null;
-        try { _localAiRuntime?.Dispose(); } catch { }
-        _localAiRuntime = null;
-        _hologramService = null;
-
-        try { _discordBridge?.Dispose(); } catch { }
-        _discordBridge = null;
-        try { _webhookController?.Dispose(); } catch { }
-        _webhookController = null;
-        try { _aiLogger?.Dispose(); } catch { }
-        _aiLogger = null;
         BattleLuckLogger.SetDiscordWebhook(null);
 
         PlayerLoadouts = null;
@@ -913,15 +716,7 @@ public class BattleLuckPlugin : BasePlugin
         AiGroupProjectMBridge = null;
         AIAssistant?.Shutdown();
         AIAssistant = null;
-        _localAiRuntime?.Dispose();
-        _localAiRuntime = null;
-        _discordBridge?.Dispose();
-        _discordBridge = null;
         BattleLuckLogger.SetDiscordWebhook(null);
-        _webhookController?.Dispose();
-        _webhookController = null;
-        _aiLogger?.Dispose();
-        _aiLogger = null;
         Session?.Shutdown();
         DeathHook.Shutdown();
 
