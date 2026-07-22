@@ -39,9 +39,9 @@ public sealed class BattleLuckCommandDispatcher
                 {
                     var attr = method.GetCustomAttribute<BattleLuckCommandAttribute>();
                     if (attr == null) continue;
-                    // BattleLuck exposes one native command: .ai request <text>.
+                    // BattleLuck exposes one native command: .ai <text>.
                     // Legacy .bl and .ai.dev routes are deliberately not registered.
-                    if (!attr.Name.Equals("ai request", StringComparison.OrdinalIgnoreCase))
+                    if (!attr.Name.Equals("ai", StringComparison.OrdinalIgnoreCase))
                         continue;
 
                     if (method.ReturnType != typeof(void) &&

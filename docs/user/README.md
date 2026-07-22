@@ -44,7 +44,9 @@ All commands use the `.` prefix in chat. `[A]` = admin-only. `.help` shows the l
 
 | Command | Description |
 |---------|-------------|
-| `.ai <message>` | Advice-only chat; cannot mutate state (public) |
+| `.ai <question or action description>` | Ask privately; admin action descriptions resolve through the catalog and preview before execution |
+| `.ai yes` / `.ai confirm <token>` | Confirm your latest unchanged action preview [A] |
+| `.ai no` | Cancel your latest action preview |
 | `.ai end` | End the 4-reply AI conversation |
 | `.ai history [items]` | Show transient AI history (last 24h) |
 | `.ai tasks` | List recent planner tasks |

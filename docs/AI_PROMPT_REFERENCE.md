@@ -4,11 +4,14 @@ This is the canonical human reference for the runtime operator prompt at `config
 
 ## Authority and execution
 
-Player and unverified external chat is advice-only. It cannot authorize an action, approval, config edit, or rollback.
+Player and unverified external chat remains advice/self-service only. Authenticated admins may describe a catalog action with `.ai <text>`, but the description only creates a fixed, session-bound preview. It cannot authorize its own execution.
 
 Authenticated admins use these paths:
 
 ```text
+.ai <action description>              # resolve and validate one catalog action
+.ai yes | .ai confirm <token>         # execute the unchanged, player-owned preview
+.ai no                                # cancel the preview
 .ai create <eventId> [templateId]  # clone an editable event, default Bloodbath
 .ai action <catalog action>          # validate and preview a live action
 .ai approve [operationId]            # execute the latest or named live-action preview
@@ -21,7 +24,7 @@ Authenticated admins use these paths:
 ```
 
 Public `.ai <question>` and `.aistatus` are advice/status paths; they do not
-authorize mutations. Admin live operations use the process
+authorize mutations. Admin descriptions use the process
 `catalog/search -> preview -> approve -> runtime execution`. An `operationId` is a
 pending proposal, not evidence that a change ran. Only a successful command result
 confirms an execution or config reload. Rollback does not reverse a live action

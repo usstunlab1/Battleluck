@@ -14,15 +14,24 @@ public sealed class CommandDispatcherTests
     }
 
     [Fact]
-    public void Public_command_surface_contains_only_ai_request()
+    public void Public_command_surface_contains_only_ai()
     {
         BattleLuckCommandDispatcher.EnsureScanned();
 
-        Assert.Equal(new[] { "ai request" }, BattleLuckCommandDispatcher.RegisteredCommands);
+        Assert.Equal(new[] { "ai" }, BattleLuckCommandDispatcher.RegisteredCommands);
         Assert.DoesNotContain(BattleLuckCommandDispatcher.RegisteredCommands,
             command => command.Equals("bl", StringComparison.OrdinalIgnoreCase) ||
                        command.StartsWith("bl ", StringComparison.OrdinalIgnoreCase) ||
                        command.StartsWith("ai.dev", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("spawn a boss at a random position", "spawn a boss at a random position")]
+    [InlineData("request spawn a boss at a random position", "spawn a boss at a random position")]
+    [InlineData("  request   show results  ", "show results")]
+    public void Ai_text_does_not_require_request_keyword(string input, string expected)
+    {
+        Assert.Equal(expected, BattleLuckRootCommands.NormalizeRequest(input));
     }
 
     [Fact]

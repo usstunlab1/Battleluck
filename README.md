@@ -2,7 +2,7 @@
 
 BattleLuck is a server-side BepInEx IL2CPP plugin for V Rising dedicated servers. It provides configurable competitive and cooperative game events, managed player sessions, rollback-safe player state, NPC and boss control, progression, death-prevention, teleports, schematics, and an ECS-backed action pipeline.
 
-Optional local AI assists with event authoring, catalog search, and admin guidance. AI chat is advice-only for players; all live mutations require admin approval and execute on the server main thread.
+Optional local AI assists with event authoring, catalog search, and admin guidance. Players receive advice and self-service actions; authenticated admins may describe catalog actions in natural language. Every live mutation is previewed, explicitly confirmed, revalidated, and executed on the server main thread.
 
 ## Install
 
@@ -19,8 +19,9 @@ Extraction is additive — the DLL never overwrites existing config, so upgrades
 AI is server-owned and local-first. No model weights or credentials are bundled in the mod.
 
 - The server reads `ai_config.json` and starts the configured provider or local fallback.
-- Players use `.ai <question>` for advice-only chat (up to 4 replies per session).
-- Admins use catalog search, preview, and approval before any live mutation.
+- Use `.ai <question or action description>`; the word `request` is not required.
+- Admin descriptions resolve to canonical catalog actions. Live mutations return a preview and require `.ai yes` or `.ai confirm <token>`.
+- Example: `.ai spawn a boss at a random position` resolves an allowlisted boss and event-owned position, then waits for confirmation.
 - Use `.aistatus` to check provider health; `.ai.reload` to refresh config.
 - Hosted AI, Discord, and webhook integrations are opt-in.
 

@@ -44,13 +44,13 @@ public static class GameChatAiBridge
             BattleLuckPlugin.AIAssistant?.SetInteractiveConversation(steamId, active: false);
             BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(
                 steamId,
-                "[AI] Four replies completed. Use .ai request <text> to start another chat, or .ai request end to close it earlier.");
+                "[AI] Four replies completed. Use .ai <text> to start another chat, or .ai end to close it earlier.");
         }
         else
         {
             BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(
                 steamId,
-                $"[AI] Conversation active — {remaining} repl{(remaining == 1 ? "y" : "ies")} remaining. Use .ai request end to stop now.");
+                $"[AI] Conversation active — {remaining} repl{(remaining == 1 ? "y" : "ies")} remaining. Use .ai end to stop now.");
         }
     }
 
@@ -88,12 +88,13 @@ public static class GameChatAiBridge
                 Text = query
             });
 
-            // Intent action router: clear action intents (join / leave) are handled
-            // synchronously on the main thread here; only non-actions fall through to the
-            // LLM assistant below. This also means actions work even when AI is disabled.
+            // Action routers run synchronously on the main server thread. This
+            // lets an active .ai conversation accept a plain "yes" confirmation
+            // while every catalog mutation remains admin- and approval-gated.
             try
             {
-                if (IntentActionRouter.TryHandlePlayerSelfService(steamId, query))
+                if (IntentActionRouter.TryHandle(steamId, query) ||
+                    NaturalLanguageActionRouter.TryHandle(steamId, query))
                     return;
             }
             catch (Exception ex)
@@ -154,7 +155,8 @@ public static class GameChatAiBridge
 
         // VCF normally consumes this command first. Keep a defensive fallback
         // so an alternate chat channel can never send the stop command to the LLM.
-        if (trimmed.Equals(".ai request end", StringComparison.OrdinalIgnoreCase))
+        if (trimmed.Equals(".ai end", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals(".ai request end", StringComparison.OrdinalIgnoreCase))
             return false;
 
         if (string.Equals(channel, "ai", StringComparison.OrdinalIgnoreCase))

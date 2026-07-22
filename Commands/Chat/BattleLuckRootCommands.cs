@@ -1,13 +1,14 @@
 using BattleLuck.Commands;
 using BattleLuck.Services.AI;
 using BattleLuck.Services.Assistant;
+using BattleLuck.Services.Practice;
 using VampireCommandFramework;
 
 namespace BattleLuck.Commands.Chat;
 
 /// <summary>
 /// The complete public BattleLuck command surface. All former .bl routes are
-/// intentionally retired; requests enter through one private .ai request command.
+/// intentionally retired; requests enter through one private .ai command.
 /// </summary>
 public static class BattleLuckRootCommands
 {
@@ -18,13 +19,13 @@ public static class BattleLuckRootCommands
     /// response. The Harmony chat prefix handles complete multi-word requests
     /// before VCF tokenizes them, then routes them to <see cref="Request"/>.
     /// </summary>
-    [Command("ai", usage: ".ai request <text>", description: "Send a private request to the BattleLuck assistant")]
-    public static void Ai(ChatCommandContext ctx, string operation = "", string request = "")
+    [Command("ai", usage: ".ai <text>", description: "Ask BattleLuck or describe a catalog action")]
+    public static void Ai(ChatCommandContext ctx, string text = "")
     {
-        if (!operation.Equals("request", StringComparison.OrdinalIgnoreCase) ||
-            string.IsNullOrWhiteSpace(request))
+        text = NormalizeRequest(text);
+        if (string.IsNullOrWhiteSpace(text))
         {
-            ctx.Reply("Usage: .ai request <text>");
+            ctx.Reply("Usage: .ai <question or action description>");
             return;
         }
 
@@ -35,20 +36,20 @@ public static class BattleLuckRootCommands
         }
 
         BattleLuckCommandDispatcher.TryDispatch(
-            $".ai request {request}",
+            $".ai {text}",
             character,
             steamId,
             ctx.Event.User.IsAdmin,
             isConsole: false);
     }
 
-    [BattleLuckCommand("ai request", description: "Send a private request to the BattleLuck assistant")]
+    [BattleLuckCommand("ai", description: "Ask BattleLuck or describe a catalog action")]
     public static async Task Request(BattleLuckCommandContext ctx, string request = "")
     {
-        request = request.Trim();
+        request = NormalizeRequest(request);
         if (request.Length == 0)
         {
-            ctx.Reply("Usage: .ai request <text>");
+            ctx.Reply("Usage: .ai <question or action description>");
             return;
         }
 
@@ -59,10 +60,14 @@ public static class BattleLuckRootCommands
             return;
         }
 
+        if (TryHandleSoloPractice(ctx, request))
+            return;
+
         GameChatAiBridge.BeginSession(ctx.SenderSteamId);
         try
         {
-            if (IntentActionRouter.TryHandlePlayerSelfService(ctx.SenderSteamId, request))
+            if (IntentActionRouter.TryHandle(ctx.SenderSteamId, request) ||
+                NaturalLanguageActionRouter.TryHandle(ctx.SenderSteamId, request))
                 return;
         }
         catch (Exception ex)
@@ -98,4 +103,38 @@ public static class BattleLuckRootCommands
             GameChatAiBridge.RecordReply(ctx.SenderSteamId);
         }
     }
+
+    internal static string NormalizeRequest(string? value)
+    {
+        var text = (value ?? string.Empty).Trim();
+        return text.Equals("request", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : text.StartsWith("request ", StringComparison.OrdinalIgnoreCase)
+                ? text["request ".Length..].Trim()
+                : text;
+
+    static bool TryHandleSoloPractice(BattleLuckCommandContext ctx, string request)
+    {
+        var parts = request.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0 || !parts[0].Equals("practice", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!ctx.IsAdmin)
+        {
+            ctx.Reply("Solo practice is an admin-only command.");
+            return true;
+        }
+
+        var mode = parts.Length > 1 ? parts[1] : "";
+        var result = mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
+            ? SoloPracticeService.Instance.Stop(ctx.SenderSteamId)
+            : SoloPracticeService.Instance.Start(ctx.SenderCharacterEntity, ctx.SenderSteamId, mode);
+        ctx.Reply(result.Success
+            ? (mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
+                ? "Solo practice NPC removed."
+                : $"Solo practice AI is starting in {mode} mode.")
+            : result.UserMessage);
+        return true;
+    }
+}
 }
