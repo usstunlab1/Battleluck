@@ -42,6 +42,7 @@ global using BattleLuck.ECS.Queries;
 global using BattleLuck.Services;
 global using BattleLuck.Services.AI;
 global using BattleLuck.Services.Flow;
+global using BattleLuck.Services.Planning;
 global using BattleLuck.Services.Modes;
 global using BattleLuck.Services.Npc;
 global using BattleLuck.Services.Runtime;

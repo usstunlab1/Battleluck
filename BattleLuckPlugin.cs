@@ -11,6 +11,7 @@ using BattleLuck.ECS.Queries;
 using BattleLuck.Services;
 using BattleLuck.Services.Castles;
 using BattleLuck.Services.Runtime;
+using BattleLuck.Services.Planning;
 using BattleLuck.Services.Flow;
 using BattleLuck.Services.AI;
 using BattleLuck.Services.Modes;
@@ -57,6 +58,7 @@ public class BattleLuckPlugin : BasePlugin
     public static CastlePolicyService? CastlePolicy { get => Core.CastlePolicy; private set => Core.CastlePolicy = value; }
     public static ServerEventPlatform? EventPlatform { get => Core.EventPlatform; private set => Core.EventPlatform = value; }
     public static PlayerDirectoryService? PlayerDirectory { get => Core.PlayerDirectory; private set => Core.PlayerDirectory = value; }
+    public static UnifiedPlannerService? Planner { get => Core.Planner; private set => Core.Planner = value; }
     public static IErrorReporter ErrorReporter { get => Core.ErrorReporter; private set => Core.ErrorReporter = value; }
     // ── Wave 1: New expansion services ──────────────────────────────────────────
     public static CompanionService? Companion { get => Core.Companion; private set => Core.Companion = value; }
@@ -606,6 +608,23 @@ public class BattleLuckPlugin : BasePlugin
                 // and strip transient buffs from any player still in the zone.
                 GameEvents.OnModeEnded += HandleModeEndedCleanup;
 
+                // Initialize Unified Planner Service
+                try
+                {
+                    var strategies = new IPlanningStrategy[]
+                    {
+                        new DeveloperBridgeStrategy(),
+                        new CombatDrillStrategy()
+                        // new LlmPlannerStrategy(AIAssistant) could be added here
+                    };
+                    Planner = new UnifiedPlannerService(strategies);
+                    Log?.LogInfo("[BattleLuck] Unified Planner Service initialized.");
+                }
+                catch (Exception ex)
+                {
+                    Log?.LogWarning($"[BattleLuck] Failed to initialize Unified Planner Service: {ex.Message}");
+                }
+
                 // Wire VFX sequences to action events
                 GameEvents.OnActionPerformed += HandleActionVFX;
 
@@ -671,6 +690,7 @@ public class BattleLuckPlugin : BasePlugin
         try { AiGroupProjectMBridge?.Dispose(); } catch { }
         AiGroupProjectMBridge = null;
         try { AIAssistant?.Shutdown(); } catch { }
+        Planner = null;
         AIAssistant = null;
         BattleLuckLogger.SetDiscordWebhook(null);
 
@@ -722,6 +742,8 @@ public class BattleLuckPlugin : BasePlugin
         AiGroupProjectMBridge = null;
         AIAssistant?.Shutdown();
         AIAssistant = null;
+        Planner = null;
+
         BattleLuckLogger.SetDiscordWebhook(null);
         Session?.Shutdown();
         DeathHook.Shutdown();

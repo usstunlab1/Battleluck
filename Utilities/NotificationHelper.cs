@@ -15,6 +15,38 @@ using Unity.Collections;
 /// </summary>
 public static class NotificationHelper
 {
+    // FixedString512Bytes reserves a few bytes for its length/header. Keep a
+    // safety margin because this is the final boundary for every notification
+    // path, including rich-text markup and multi-byte UTF-8 characters.
+    internal const int MaxSystemMessageUtf8Bytes = 500;
+
+    internal static string ClampForSystemMessage(string? message)
+    {
+        var value = message ?? string.Empty;
+        if (Encoding.UTF8.GetByteCount(value) <= MaxSystemMessageUtf8Bytes)
+            return value;
+
+        const string suffix = "…";
+        var budget = MaxSystemMessageUtf8Bytes - Encoding.UTF8.GetByteCount(suffix);
+        var builder = new StringBuilder();
+        var bytes = 0;
+
+        // EnumerateRunes prevents truncating a surrogate pair in half. The
+        // byte budget is what FixedString512Bytes enforces, not UTF-16 length.
+        foreach (var rune in value.EnumerateRunes())
+        {
+            var runeText = rune.ToString();
+            var runeBytes = Encoding.UTF8.GetByteCount(runeText);
+            if (bytes + runeBytes > budget)
+                break;
+
+            builder.Append(runeText);
+            bytes += runeBytes;
+        }
+
+        return builder.Append(suffix).ToString();
+    }
+
     // ── Notification Types ────────────────────────────────────
 
     /// <summary>Severity level for in-game notifications.</summary>
@@ -224,7 +256,7 @@ public static class NotificationHelper
         try
         {
             var em = VRisingCore.EntityManager;
-            var msg = (FixedString512Bytes)message;
+            var msg = (FixedString512Bytes)ClampForSystemMessage(message);
             ProjectM.ServerChatUtils.SendSystemMessageToClient(em, user, ref msg);
         }
         catch (Exception ex)
@@ -248,7 +280,7 @@ public static class NotificationHelper
                     var user = em.GetComponentData<User>(users[i]);
                     if (user.IsConnected)
                     {
-                        var msg = (FixedString512Bytes)message;
+                        var msg = (FixedString512Bytes)ClampForSystemMessage(message);
                         ProjectM.ServerChatUtils.SendSystemMessageToClient(em, user, ref msg);
                     }
                 }
@@ -277,7 +309,7 @@ public static class NotificationHelper
                     var user = em.GetComponentData<User>(users[i]);
                     if (user.IsConnected && user.IsAdmin)
                     {
-                        var msg = (FixedString512Bytes)message;
+                        var msg = (FixedString512Bytes)ClampForSystemMessage(message);
                         ProjectM.ServerChatUtils.SendSystemMessageToClient(em, user, ref msg);
                     }
                 }

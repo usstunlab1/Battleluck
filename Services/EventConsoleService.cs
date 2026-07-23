@@ -187,7 +187,7 @@ public sealed class EventConsoleService
             var steamId = players[index];
             var name = FormatName(ResolveName(steamId));
             sb.Append(index + 1).Append("  ")
-              .Append(name.PadRight(Math.Clamp(_settings.MaxNameLength, 6, 14)))
+              .Append(name.PadRight(Math.Clamp(_settings.MaxNameLength, 6, 32)))
               .Append("  ")
               .Append(_context.Scores.GetPlayerScore(steamId).ToString(CultureInfo.InvariantCulture).PadLeft(5))
               .Append("  ")
@@ -211,7 +211,7 @@ public sealed class EventConsoleService
     string FormatName(string name)
     {
         var safe = name.Replace("<", "").Replace(">", "").Replace('\r', ' ').Replace('\n', ' ').Trim();
-        var limit = Math.Clamp(_settings.MaxNameLength, 6, 14);
+        var limit = Math.Clamp(_settings.MaxNameLength, 6, 32);
         return safe.Length <= limit ? safe : safe[..limit];
     }
 

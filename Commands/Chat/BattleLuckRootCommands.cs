@@ -1,6 +1,7 @@
 using BattleLuck.Commands;
 using BattleLuck.Services.AI;
 using BattleLuck.Services.Assistant;
+using BattleLuck.Services.Practice;
 using VampireCommandFramework;
 
 namespace BattleLuck.Commands.Chat;
@@ -59,6 +60,9 @@ public static class BattleLuckRootCommands
             return;
         }
 
+        if (TryHandleSoloPractice(ctx, request))
+            return;
+
         GameChatAiBridge.BeginSession(ctx.SenderSteamId);
         try
         {
@@ -87,9 +91,10 @@ public static class BattleLuckRootCommands
                 source: "ai_request",
                 broadcastToInGameChat: false).ConfigureAwait(false);
 
-            BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(
-                ctx.SenderSteamId,
-                string.IsNullOrWhiteSpace(reply) ? AiLite.Answer(request) : reply);
+            var playerReply = string.IsNullOrWhiteSpace(reply)
+                ? AiLite.Answer(request)
+                : assistant.FormatInGameResponse(request, reply);
+            BattleLuckPlugin.NotifyPlayerBySteamIdOnMainThread(ctx.SenderSteamId, playerReply);
             GameChatAiBridge.RecordReply(ctx.SenderSteamId);
         }
         catch (Exception ex)
@@ -103,10 +108,59 @@ public static class BattleLuckRootCommands
     internal static string NormalizeRequest(string? value)
     {
         var text = (value ?? string.Empty).Trim();
-        return text.Equals("request", StringComparison.OrdinalIgnoreCase)
-            ? string.Empty
-            : text.StartsWith("request ", StringComparison.OrdinalIgnoreCase)
-                ? text["request ".Length..].Trim()
-                : text;
+        if (text.Equals("r", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("request", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+
+        if (text.StartsWith("r ", StringComparison.OrdinalIgnoreCase))
+            return text["r ".Length..].Trim();
+        if (text.StartsWith("request ", StringComparison.OrdinalIgnoreCase))
+            return text["request ".Length..].Trim();
+
+        var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (tokens.Length >= 2 && tokens[0].Equals("pr", StringComparison.OrdinalIgnoreCase))
+        {
+            var practiceMode = tokens[1].ToLowerInvariant() switch
+            {
+                "mir" => "mirror",
+                "fol" => "follow",
+                "fig" => "fight",
+                "st" => "status",
+                "stop" => "stop",
+                _ => tokens[1]
+            };
+            return $"practice {practiceMode}";
+        }
+
+        return text;
+    }
+
+    static bool TryHandleSoloPractice(BattleLuckCommandContext ctx, string request)
+    {
+        var parts = request.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0 || !parts[0].Equals("practice", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!ctx.IsAdmin)
+        {
+            ctx.Reply("Solo practice is an admin-only command.");
+            return true;
+        }
+
+        var mode = parts.Length > 1 ? parts[1] : "";
+        if (mode.Equals("status", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Reply(SoloPracticeService.Instance.Status(ctx.SenderSteamId));
+            return true;
+        }
+        var result = mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
+            ? SoloPracticeService.Instance.Stop(ctx.SenderSteamId)
+            : SoloPracticeService.Instance.Start(ctx.SenderCharacterEntity, ctx.SenderSteamId, mode);
+        ctx.Reply(result.Success
+            ? (mode.Equals("stop", StringComparison.OrdinalIgnoreCase)
+                ? "Solo practice NPC removed."
+                : $"Solo practice AI is starting in {mode} mode.")
+            : result.UserMessage);
+        return true;
     }
 }

@@ -18,6 +18,28 @@ public static class PrefabHelper
     static readonly Dictionary<string, PrefabGUID> _exactCache = new();
     static readonly Dictionary<string, PrefabGUID> _lowerCache = new(StringComparer.OrdinalIgnoreCase);
     static bool _initialized;
+    static readonly object _catalogLock = new();
+    static PrefabCatalog? _catalog;
+
+    static PrefabCatalog Catalog
+    {
+        get
+        {
+            if (_catalog != null) return _catalog;
+            lock (_catalogLock)
+            {
+                if (_catalog != null) return _catalog;
+                var candidates = new[]
+                {
+                    Path.Combine(AppContext.BaseDirectory, "Data", "render-prefabs.json"),
+                    Path.Combine("Data", "render-prefabs.json")
+                };
+                var path = candidates.FirstOrDefault(File.Exists);
+                _catalog = path == null ? new PrefabCatalog() : PrefabCatalog.Load(path);
+                return _catalog;
+            }
+        }
+    }
 
     static void EnsureInitialized()
     {
@@ -96,7 +118,62 @@ public static class PrefabHelper
             if (kvp.Value.GuidHash == guid.GuidHash)
                 return kvp.Key;
         }
-        return null;
+        return Catalog.TryGetName(guid, out var archiveName) ? archiveName : null;
+    }
+
+    /// <summary>
+    /// Resolves either a GUID hash or a prefab name to the canonical V Rising
+    /// prefab name. Returns false for unknown or ambiguous names.
+    /// </summary>
+    public static bool TryResolvePrefabReference(string value, out PrefabGUID guid, out string canonicalName)
+    {
+        guid = PrefabGUID.Empty;
+        canonicalName = string.Empty;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+
+        var input = value.Trim();
+        if (int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hash))
+        {
+            guid = new PrefabGUID(hash);
+            canonicalName = Catalog.TryGetName(guid, out var archiveName)
+                ? archiveName
+                : GetLivePrefabName(guid) ?? GetName(guid) ?? $"GUID_{hash}";
+            return true;
+        }
+
+        if (Catalog.TryGetGuid(input, out guid) || TryGetPrefabGuid(input, out guid))
+        {
+            canonicalName = Catalog.TryGetName(guid, out var archiveName)
+                ? archiveName
+                : GetLivePrefabName(guid) ?? GetName(guid) ?? input;
+            return true;
+        }
+
+        var liveGuid = GetLivePrefabGuid(input);
+        if (liveGuid.HasValue)
+        {
+            guid = liveGuid.Value;
+            canonicalName = GetLivePrefabName(guid) ?? GetName(guid) ?? input;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Exports every archived prefab as a portable prefab.resolve action.</summary>
+    public static IReadOnlyList<PrefabActionExport> ExportAllPrefabActions() => Catalog.ExportActions().ToList();
+
+    /// <summary>Writes the complete prefab database in action-payload form.</summary>
+    public static void ExportAllPrefabActions(string outputPath)
+    {
+        if (string.IsNullOrWhiteSpace(outputPath))
+            throw new ArgumentException("An output path is required.", nameof(outputPath));
+        var directory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(ExportAllPrefabActions(), new JsonSerializerOptions
+        {
+            WriteIndented = true
+        }));
     }
 
     /// <summary>Get all registered prefab names.</summary>

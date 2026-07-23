@@ -4,6 +4,7 @@ using BattleLuck.Models;
 using BattleLuck.Services.Flow;
 using BattleLuck.Services.Modes;
 using BattleLuck.Services.Runtime;
+using BattleLuck.Services.Adaptive;
 using ProjectM.Shared;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -1852,6 +1853,8 @@ public sealed class SessionController
 
         foreach (var player in VRisingCore.GetOnlinePlayers().Where(e => e.Exists() && e.IsPlayer() && session.Context.Players.Contains(e.GetSteamId())))
             _flow.ExecuteStart(session.Config, player, zone, session.Context);
+
+        AdaptiveCombatDrillService.Instance.StartEvent(session.Context, zone);
 
         session.Mode?.OnStart(session.Context);
         _eventRuntime.MarkActive(session.Context.SessionId);

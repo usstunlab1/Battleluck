@@ -148,6 +148,20 @@ public static class ConfigLoader
         var llamaTimeout = Env.Get("BATTLELUCK_LOCAL_LLM_TIMEOUT_SECONDS");
         if (!string.IsNullOrWhiteSpace(llamaTimeout) && int.TryParse(llamaTimeout, out var llamaTimeoutSeconds))
             config.LlamaAPI.TimeoutSeconds = llamaTimeoutSeconds;
+
+        var openAiApiKey = Env.Get("BATTLELUCK_OPENAI_API_KEY");
+        if (!string.IsNullOrWhiteSpace(openAiApiKey))
+        {
+            config.OpenAIAPI.ApiKey = openAiApiKey.Trim();
+            config.OpenAIAPI.Enabled = true;
+        }
+        var openAiModel = Env.Get("BATTLELUCK_OPENAI_MODEL");
+        if (!string.IsNullOrWhiteSpace(openAiModel)) config.OpenAIAPI.Model = openAiModel.Trim();
+        var openAiBaseUrl = Env.Get("BATTLELUCK_OPENAI_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(openAiBaseUrl)) config.OpenAIAPI.BaseUrl = openAiBaseUrl.Trim();
+        var openAiTimeout = Env.Get("BATTLELUCK_OPENAI_TIMEOUT_SECONDS");
+        if (!string.IsNullOrWhiteSpace(openAiTimeout) && int.TryParse(openAiTimeout, out var openAiTimeoutSeconds))
+            config.OpenAIAPI.TimeoutSeconds = openAiTimeoutSeconds;
     }
 
     public static TechCatalog LoadTechCatalog()

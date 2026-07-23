@@ -22,6 +22,9 @@ namespace BattleLuck.Models
         [JsonPropertyName("llama_api")]
         public LlamaAPISettings LlamaAPI { get; set; } = new();
 
+        [JsonPropertyName("openai_api")]
+        public OpenAIApiSettings OpenAIAPI { get; set; } = new();
+
         [JsonPropertyName("cloudflare_ai")]
         public CloudflareAISettings CloudflareAI { get; set; } = new();
 
@@ -90,6 +93,34 @@ namespace BattleLuck.Models
 
         [JsonPropertyName("timeout_seconds")]
         public int TimeoutSeconds { get; set; } = 90;
+    }
+
+    /// <summary>Optional server-side OpenAI text provider. Keep ApiKey in an environment variable, never in source control.</summary>
+    public class OpenAIApiSettings
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        [JsonPropertyName("api_key")]
+        public string ApiKey { get; set; } = "";
+
+        [JsonPropertyName("base_url")]
+        public string BaseUrl { get; set; } = "https://api.openai.com/v1";
+
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = "gpt-4.1-mini";
+
+        [JsonPropertyName("max_requests_per_second")]
+        public int MaxRequestsPerSecond { get; set; } = 2;
+
+        [JsonPropertyName("temperature")]
+        public float Temperature { get; set; } = 0.4f;
+
+        [JsonPropertyName("max_tokens")]
+        public int MaxTokens { get; set; } = 512;
+
+        [JsonPropertyName("timeout_seconds")]
+        public int TimeoutSeconds { get; set; } = 30;
     }
 
     public class MessagingSettings

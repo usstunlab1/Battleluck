@@ -22,5 +22,5 @@ public sealed class EventConsoleSettings
     public int RecentActions { get; set; } = 3;
 
     [JsonPropertyName("maxNameLength")]
-    public int MaxNameLength { get; set; } = 12;
+    public int MaxNameLength { get; set; } = 32;
 }

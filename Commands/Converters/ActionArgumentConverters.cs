@@ -239,9 +239,13 @@ public static class ActionParameterConverter
 
         var trimmed = input.Trim();
         if (BossAliases.TryGetValue(trimmed, out var bossPrefab))
-            return bossPrefab;
+            trimmed = bossPrefab;
 
-        return trimmed;
+        // Action payloads always retain the stable game name. This lets an
+        // operator use a GUID, an archive name, or a known boss alias.
+        return PrefabHelper.TryResolvePrefabReference(trimmed, out _, out var canonicalName)
+            ? canonicalName
+            : trimmed;
     }
 
     static bool ContainsAllTerms(string text, string query)

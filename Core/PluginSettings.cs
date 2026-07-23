@@ -31,7 +31,7 @@ public static class PluginSettings
         _aiEnabled = config.Bind("AI", "Enabled", true,
             "Master switch for the BattleLuck AI assistant. ai_config.json must also enable AI.");
         _aiProvider = config.Bind("AI", "Provider", "config",
-            "AI provider override: config, auto, local, llama, cloudflare, or google.");
+            "AI provider override: config, auto, local, llama, openai, cloudflare, or google.");
         _aiEventAuthoringEnabled = config.Bind("AI", "EventAuthoringEnabled", true,
             "Allow approval-gated AI event creation and editing.");
         _aiAutoExecuteNpcActions = config.Bind("AI", "AutoExecuteNpcActions", false,

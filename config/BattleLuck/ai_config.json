@@ -12,6 +12,16 @@
     "max_tokens": 512,
     "timeout_seconds": 30
   },
+  "openai_api": {
+    "enabled": false,
+    "api_key": "",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4.1-mini",
+    "max_requests_per_second": 2,
+    "temperature": 0.4,
+    "max_tokens": 512,
+    "timeout_seconds": 30
+  },
   "messaging": {
     "message_cooldown_seconds": 30,
     "tip_cooldown_minutes": 5,

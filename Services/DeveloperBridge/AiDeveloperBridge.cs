@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using BattleLuck.Models;
+using BattleLuck.Services.Planning;
 using BattleLuck.Services.Runtime;
 
 namespace BattleLuck.Services.DeveloperBridge;
@@ -47,22 +48,27 @@ public sealed class AiDeveloperBridge
         if (!snapshotResult.Success) return OperationResult<DeveloperPlan>.Fail(snapshotResult.Error ?? "Snapshot capture failed.");
         var snapshot = snapshotResult.Value!;
 
-        // The bridge deliberately produces catalog-bound templates. Parameters
-        // must be supplied/validated before dev-arena execution; no GUID is guessed.
-        var steps = manifest.Actions.Take(Math.Min(3, manifest.Limits.MaxActions)).Select((action, index) =>
-            new DeveloperPlanStep($"step-{index + 1}", action, new Dictionary<string, string>(),
-                $"Validated {action} transition completes inside the tracked dev run")).ToArray();
+        // Use the unified planner to generate the core plan steps.
+        var planner = BattleLuckPlugin.Planner;
+        if (planner == null) return OperationResult<DeveloperPlan>.Fail("Planner service is unavailable.");
+
+        var planningRequest = new PlanningRequest(goal, PlanningStrategyType.DeveloperBridge, new DeveloperBridgeContext { Manifest = manifest });
+        var planningResult = planner.GeneratePlanAsync(planningRequest).GetAwaiter().GetResult(); // Bridge is sync, so block.
+        if (!planningResult.Success) return OperationResult<DeveloperPlan>.Fail(planningResult.Error ?? "Planning failed.");
+
+        var protoPlan = planningResult.Value!;
+
+        // Finalize the plan with request-specific IDs and hashes.
         var basePlan = new
         {
-            schema = 1, requestId = grant.Id, manifestSha256 = hash, snapshotSha256 = snapshot.Sha256, goal = goal.Trim(),
-            steps, assertions = new[] { "action_count_within_limit", "all_actions_catalogued", "cleanup_declared" },
-            risks = new[] { "NPC actions require validated prefab and target parameters before execution" },
-            cleanup = new[] { "dev.entities.destroy", "player.snapshot.restore" }
+            schema = protoPlan.Schema, requestId = grant.Id, manifestSha256 = hash, snapshotSha256 = snapshot.Sha256, goal = goal.Trim(),
+            steps = protoPlan.Steps, assertions = protoPlan.Assertions, risks = protoPlan.Risks, cleanup = protoPlan.Cleanup
         };
         var planHash = Sha256(JsonSerializer.Serialize(basePlan, JsonOptions));
-        var plan = new DeveloperPlan(1, "plan_" + Guid.NewGuid().ToString("N"), grant.Id, hash, goal.Trim(), steps,
-            basePlan.assertions, basePlan.risks, basePlan.cleanup, false, planHash)
+        var plan = new DeveloperPlan(protoPlan.Schema, "plan_" + Guid.NewGuid().ToString("N"), grant.Id, hash, goal.Trim(), protoPlan.Steps,
+            protoPlan.Assertions, protoPlan.Risks, protoPlan.Cleanup, false, planHash)
             { SnapshotSha256 = snapshot.Sha256 };
+
         lock (_gate) { _plans[plan.Id] = plan; _snapshots[grant.Id] = snapshot; }
         return OperationResult<DeveloperPlan>.Ok(plan);
     }

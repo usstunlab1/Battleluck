@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "events": {
+    "*": {
+      "enabled": true,
+      "maximumNpcCount": 4,
+      "baseThreat": 12,
+      "npcs": [
+        { "id": "bandit_thug", "prefab": "CHAR_Bandit_Thug", "threatCost": 5, "minimumStrength": 0, "maximumStrength": 100, "behavior": "attack" },
+        { "id": "bandit_hunter", "prefab": "CHAR_Bandit_Hunter", "threatCost": 8, "minimumStrength": 20, "maximumStrength": 100, "behavior": "attack" }
+      ],
+      "drills": [ { "id": "basic_combat", "reaction": "counter" } ]
+    }
+  }
+}

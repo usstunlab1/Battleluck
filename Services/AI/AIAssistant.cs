@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleLuck.Models;
 using BattleLuck.Services;
@@ -20,6 +21,7 @@ namespace BattleLuck.Core
         private GoogleAIService? _googleAiService;
         private readonly List<GoogleAIService> _googleAiFallbackServices = new();
         private LlamaAIService? _llamaAiService;
+        private OpenAiService? _openAiService;
         private CloudflareAiService? _cloudflareAiService;
         private BattleAiSidecarService? _sidecarService;
         private MCPRuntimeService? _mcpRuntime;
@@ -69,6 +71,9 @@ namespace BattleLuck.Core
         private static bool IsGoogleProvider(string provider) =>
             provider is "google" or "google_ai";
 
+        private static bool IsOpenAiProvider(string provider) =>
+            provider is "openai" or "openai_api" or "gpt";
+
         private static bool IsQwenProvider(string provider) =>
             provider is "qwen" or "cloudflare_qwen" or "qwen_cloudflare";
 
@@ -112,6 +117,7 @@ namespace BattleLuck.Core
         var wantsCloudflare = IsCloudflareProvider(provider);
         var wantsGoogle = provider == "auto" || IsGoogleProvider(provider);
         var wantsLlama = provider == "auto" || IsLlamaProvider(provider);
+        var wantsOpenAi = provider == "auto" || IsOpenAiProvider(provider);
 
                 if (wantsLlama && config.LlamaAPI.Enabled)
                 {
@@ -136,6 +142,29 @@ namespace BattleLuck.Core
                     else
                     {
                         _disabledProviders.Add("llama: missing/placeholder api key or non-local base_url");
+                    }
+                }
+
+                if (wantsOpenAi && config.OpenAIAPI.Enabled)
+                {
+                    if (OpenAiService.HasUsableConfiguration(config.OpenAIAPI.ApiKey, config.OpenAIAPI.BaseUrl, config.OpenAIAPI.Model))
+                    {
+                        _queryTemperature = config.OpenAIAPI.Temperature;
+                        _queryMaxTokens = Math.Max(100, config.OpenAIAPI.MaxTokens);
+                        _openAiService?.Dispose();
+                        _openAiService = new OpenAiService(
+                            config.OpenAIAPI.ApiKey,
+                            config.OpenAIAPI.BaseUrl,
+                            config.OpenAIAPI.Model,
+                            Math.Max(1, config.OpenAIAPI.MaxRequestsPerSecond),
+                            Math.Max(5, config.OpenAIAPI.TimeoutSeconds));
+                        if (_activeProvider == "none")
+                            _activeProvider = "openai";
+                        BattleLuckLogger.Info($"AI Assistant configured OpenAI ({config.OpenAIAPI.Model})");
+                    }
+                    else
+                    {
+                        _disabledProviders.Add("openai: missing/placeholder api key, HTTPS base_url, or model");
                     }
                 }
 
@@ -216,6 +245,10 @@ namespace BattleLuck.Core
                     else if (IsQwenProvider(provider))
                     {
                         BattleLuckLogger.Warning($"AI Assistant provider '{config.Provider}' is Qwen-over-Cloudflare but no usable Cloudflare Workers AI credentials are configured. Local simple AI fallback enabled. Disabled providers: {disabled}. Check cloudflare_ai.account_id/api_token/model, then run .ai.reload.");
+                    }
+                    else if (IsOpenAiProvider(provider))
+                    {
+                        BattleLuckLogger.Warning($"AI Assistant provider '{config.Provider}' is OpenAI-only but has no usable server credential. Local simple AI fallback enabled. Set BATTLELUCK_OPENAI_API_KEY, then run .ai.reload.");
                     }
                     else
                     {
@@ -308,6 +341,8 @@ namespace BattleLuck.Core
             _googleAiFallbackServices.Clear();
             _cloudflareAiService?.Dispose();
             _cloudflareAiService = null;
+            _openAiService?.Dispose();
+            _openAiService = null;
             _llamaAiService?.Dispose();
             _llamaAiService = null;
             _sidecarService?.Dispose();
@@ -335,6 +370,7 @@ namespace BattleLuck.Core
 
         bool HasTextProvider() =>
             (_llamaAiService != null && _llamaAiService.IsEnabled) ||
+            (_openAiService != null && _openAiService.IsEnabled) ||
             (_cloudflareAiService != null && _cloudflareAiService.IsEnabled) ||
             (_googleAiService != null && _googleAiService.IsEnabled);
 
@@ -458,15 +494,34 @@ namespace BattleLuck.Core
 
         public string FormatInGameResponse(string? query, string? response)
         {
-            var text = TrimForOutput(response, 520);
+            // The model output is untrusted player-facing text. Remove Unity
+            // rich-text tags before applying the configured response color so a
+            // model cannot inject arbitrary markup or bypass our wrapper.
+            var safeResponse = StripRichTextTags(response);
+            // Leave headroom for the notification prefix and rich-text tags.
+            // NotificationHelper also applies a final UTF-8 byte clamp for all
+            // notification callers, including multi-byte player text.
+            var text = TrimForOutput(safeResponse, 420);
             var colors = _config?.Messaging?.AiColors ?? new AIColorSettings();
             if (!colors.Enabled)
                 return $"AI Assistant: {text}";
 
-            var bodyColor = SelectAiResponseColor(query, response, colors);
+            var bodyColor = SelectAiResponseColor(query, safeResponse, colors);
             var name = NotificationHelper.ColorizeText("AI Assistant", colors.Name);
             var body = NotificationHelper.ColorizeText(text, bodyColor);
             return $"{name}: {body}";
+        }
+
+        private static string StripRichTextTags(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            return Regex.Replace(
+                value,
+                @"</?(?:color|b|i|u|s|size|material|quad)(?:=[^>\r\n]*)?>",
+                string.Empty,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
         static string SelectAiResponseColor(string? query, string? response, AIColorSettings colors)
@@ -1502,6 +1557,7 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
                 provider.Dispose();
             _googleAiFallbackServices.Clear();
             _activeProvider = _llamaAiService?.IsEnabled == true ? "llama" :
+                _openAiService?.IsEnabled == true ? "openai" :
                 _cloudflareAiService?.IsEnabled == true ? CloudflareActiveProvider(NormalizeProviderName(Provider)) : "none";
             _providerStatus = BuildProviderStatus(lastError);
         }
@@ -1548,6 +1604,8 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
 
             if (_activeProvider == "llama" && _llamaAiService != null)
                 status += $"(model={_llamaAiService.Model}, url={_llamaAiService.ApiBaseUrl})";
+            else if (_activeProvider == "openai" && _openAiService != null)
+                status += $"(model={_openAiService.Model}, url={_openAiService.BaseUrl})";
 
             status += $"; disabled={disabled}";
             if (!string.IsNullOrWhiteSpace(lastError))
@@ -1559,6 +1617,8 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
         {
             if (!string.IsNullOrWhiteSpace(_llamaAiService?.LastError))
                 return $"Llama failed: {_llamaAiService.LastError}";
+            if (!string.IsNullOrWhiteSpace(_openAiService?.LastError))
+                return $"OpenAI failed: {_openAiService.LastError}";
             if (!string.IsNullOrWhiteSpace(_cloudflareAiService?.LastError))
                 return $"Cloudflare AI failed: {_cloudflareAiService.LastError}";
             if (!string.IsNullOrWhiteSpace(_googleAiService?.LastError))
@@ -1605,6 +1665,10 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
                 if (!string.IsNullOrWhiteSpace(llamaResponse))
                     return llamaResponse;
 
+                var openAiResponse = await TryOpenAiAsync(messages, temperature, maxTokens, "auto provider");
+                if (!string.IsNullOrWhiteSpace(openAiResponse))
+                    return openAiResponse;
+
                 if (_cloudflareAiService?.IsEnabled == true)
                 {
                     var cloudflareResponse = await _cloudflareAiService.GetChatCompletionAsync(messages, temperature, maxTokens);
@@ -1643,6 +1707,9 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
 
                 return null;
             }
+
+            if (IsOpenAiProvider(provider))
+                return await TryOpenAiAsync(messages, temperature, maxTokens, "OpenAI primary");
 
             if (IsCloudflareProvider(provider))
             {
@@ -1701,6 +1768,35 @@ Provide gameplay help only. Do not provide admin commands, config-edit instructi
                     return null;
                 }
             }
+        }
+
+        async Task<string?> TryOpenAiAsync(List<ChatMessage> messages, float temperature, int maxTokens, string context)
+        {
+            if (_openAiService == null || !_openAiService.IsEnabled)
+                return null;
+
+            var response = await _openAiService.GetChatCompletionAsync(messages, temperature, maxTokens);
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                _activeProvider = "openai";
+                _providerStatus = BuildProviderStatus();
+                return response;
+            }
+
+            if (_openAiService.AuthFailed)
+            {
+                AddDisabledProvider("openai: auth failed");
+                _openAiService.Dispose();
+                _openAiService = null;
+                _providerStatus = BuildProviderStatus("OpenAI auth failed; provider disabled until reload.");
+                BattleLuckLogger.Warning($"{context}: OpenAI auth failed; provider disabled until reload.");
+            }
+            else
+            {
+                BattleLuckLogger.Warning($"{context}: OpenAI returned empty response. LastError={_openAiService.LastError}");
+            }
+
+            return null;
         }
 
         private string GetSystemPrompt()
