@@ -267,7 +267,7 @@ public sealed class EventDefinitionLoader
         foreach (var name in prompt.AllowedActions.Concat(prompt.BlockedActions).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (!registered.Contains(name))
-                result.Errors.Add($"prompt.txt references unknown action '{name}'.");
+                result.Errors.Add($"event.json AI policy references unknown action '{name}'.");
         }
 
         var blocked = prompt.BlockedActions.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -275,9 +275,9 @@ public sealed class EventDefinitionLoader
         foreach (var name in EnumerateActionNames(definition))
         {
             if (blocked.Contains(name))
-                result.Errors.Add($"Event action '{name}' is blocked by prompt.txt.");
+                result.Errors.Add($"Event action '{name}' is blocked by event.json AI policy.");
             else if (allowed.Count > 0 && !allowed.Contains(name))
-                result.Errors.Add($"Event action '{name}' is not allowed by prompt.txt.");
+                result.Errors.Add($"Event action '{name}' is not allowed by event.json AI policy.");
         }
     }
 

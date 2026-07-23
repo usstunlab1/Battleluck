@@ -40,8 +40,9 @@ public sealed class ModeConfig
 
     /// <summary>
     /// Parsed frontmatter from an Events/&lt;modeId&gt;/prompt.txt, when present.
-    /// Fed by <c>ConfigAdapter</c> so Phase 6/7 validation can read allowed/blocked
-    /// actions without re-parsing the file.
+    /// DEPRECATED: This property is kept for legacy compatibility. The canonical
+    /// AI policy is now in event.json ai block. prompt.txt is optional and
+    /// contains only narrative override text.
     /// </summary>
     public EventPromptDefinition? EventPrompt { get; set; }
 }

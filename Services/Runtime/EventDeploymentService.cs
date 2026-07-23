@@ -8,14 +8,14 @@ using BattleLuck.Models;
 namespace BattleLuck.Services.Runtime;
 
 /// <summary>
-/// No-code event deployment boundary. Admins can publish the four declarative
+/// No-code event deployment boundary. Admins can publish the three declarative
 /// event files from a HTTPS GitHub Gist without touching C# or the server file
 /// system. Files are downloaded into a staging folder, validated, backed up, and
-/// only then switched into the live events directory.
+/// only then switched into the live events directory. prompt.txt is optional.
 /// </summary>
 public sealed class EventDeploymentService
 {
-    public static readonly string[] RequiredFiles = { "event.json", "zones.json", "kits.json", "prompt.txt" };
+    public static readonly string[] RequiredFiles = { "event.json", "zones.json", "kits.json" };
 
     static readonly Regex ValidId = new("^[a-z0-9][a-z0-9_-]{1,31}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     static readonly HttpClient Http = CreateHttpClient();
@@ -47,6 +47,18 @@ public sealed class EventDeploymentService
             files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in RequiredFiles)
                 files[file] = await DownloadTextAsync(fileUrls[file], cancellationToken).ConfigureAwait(false);
+
+            // Optionally download prompt.txt if it exists in the gist
+            try
+            {
+                var promptText = await DownloadTextAsync(fileUrls["prompt.txt"], cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(promptText))
+                    files["prompt.txt"] = promptText;
+            }
+            catch
+            {
+                // prompt.txt is optional, ignore download failures
+            }
         }
         catch (Exception ex)
         {
@@ -219,6 +231,12 @@ public sealed class EventDeploymentService
                 if (file.Equals("event.json", StringComparison.OrdinalIgnoreCase))
                     continue;
                 File.WriteAllText(Path.Combine(staging, file), files[file], new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            }
+
+            // Optionally write prompt.txt if provided
+            if (files.TryGetValue("prompt.txt", out var promptText) && !string.IsNullOrWhiteSpace(promptText))
+            {
+                File.WriteAllText(Path.Combine(staging, "prompt.txt"), promptText, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             }
 
             if (hadExisting)

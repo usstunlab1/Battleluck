@@ -56,8 +56,9 @@ public static class ConfigAdapter
 
     /// <summary>
     /// Parses the YAML-frontmatter + narrative body of an Events prompt.txt.
-    /// Format is deliberately tolerant: a leading '---' block of 'key: value' and
-    /// '- list' entries, followed by a free-text body.
+    /// DEPRECATED: This method is kept for legacy compatibility. The canonical
+    /// AI policy is now in event.json ai block. prompt.txt is optional and
+    /// contains only narrative override text.
     /// </summary>
     public static EventPromptDefinition ParsePromptFrontmatter(string text)
     {
