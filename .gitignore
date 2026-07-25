@@ -12,6 +12,7 @@ credentials.json
 appsettings.*.json
 !appsettings.json
 !appsettings.Example.json
+config.json
 
 # User directories
 .external/

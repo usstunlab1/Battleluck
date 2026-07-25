@@ -9,8 +9,6 @@ import { SaveModal } from './components/Modals/SaveModal';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { GuideModal } from './components/Modals/GuideModal';
 import { BepInExDataModal } from './components/BepInExDataModal';
-import { NpcQuestBoard } from './components/NpcQuestBoard';
-import { Map, ScrollText } from 'lucide-react';
 
 import { 
   RegionId, 
@@ -35,7 +33,6 @@ export default function App() {
   const [isNightMode, setIsNightMode] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [embedMode, setEmbedMode] = useState(false);
-  const [workspace, setWorkspace] = useState<'quests' | 'map'>('quests');
   
   // Region & Layer visibility
   const [selectedRegion, setSelectedRegion] = useState<RegionId | 'all'>('all');
@@ -328,17 +325,6 @@ export default function App() {
 
       {/* Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex rounded-xl border border-white/10 bg-black/85 p-1 shadow-2xl backdrop-blur">
-          <button onClick={() => setWorkspace('quests')} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition ${workspace === 'quests' ? 'bg-red-700 text-white' : 'text-zinc-400 hover:text-white'}`}>
-            <ScrollText className="w-4 h-4" /> NPC Quests
-          </button>
-          <button onClick={() => setWorkspace('map')} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition ${workspace === 'map' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'}`}>
-            <Map className="w-4 h-4" /> World Map
-          </button>
-        </div>
-        {workspace === 'quests' ? (
-          <main className="flex-1 h-full min-w-0"><NpcQuestBoard /></main>
-        ) : (<>
         {/* Left Sidebar: Layers & Region Explorer */}
         <LeftSidebar
           isOpen={isLeftOpen}
@@ -487,7 +473,6 @@ export default function App() {
           setPlacedResourceNodes={setPlacedResourceNodes}
           onOpenBepInExModal={() => setIsBepInExOpen(true)}
         />
-        </>)}
       </div>
 
       {/* Bottom Status Footer */}

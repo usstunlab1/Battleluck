@@ -17,6 +17,7 @@ public static class EventSchemaValidator
             RequireObject(root, "metadata", "event.json", result);
             if (TryRequireArray(root, "zones", "event.json", result, out var zones))
                 ValidateZoneObjects(zones, "center", "event.json", result);
+            ValidateAiBlock(root, "event.json", result);
         });
         ValidateJson(files, "zones.json", result, root =>
         {
@@ -25,8 +26,11 @@ public static class EventSchemaValidator
         });
         ValidateJson(files, "kits.json", result, root => RequireObject(root, "settings", "kits.json", result));
 
-        if (!files.TryGetValue("prompt.txt", out var prompt) || string.IsNullOrWhiteSpace(prompt))
-            result.Errors.Add("ESCHEMA: prompt.txt must contain a non-empty prompt contract.");
+        // prompt.txt is optional; validate only if present
+        if (files.TryGetValue("prompt.txt", out var prompt) && !string.IsNullOrWhiteSpace(prompt))
+        {
+            ValidateOptionalPrompt(prompt, result);
+        }
 
         result.Errors.AddRange(EventReferenceAllowlistValidator.Validate(files).Errors);
 
@@ -107,6 +111,50 @@ public static class EventSchemaValidator
             }
             index++;
         }
+    }
+
+    static void ValidateAiBlock(JsonElement root, string file, EventSchemaValidationResult result)
+    {
+        // AI block is optional; if present, validate its structure
+        if (!root.TryGetProperty("ai", out var ai))
+            return;
+
+        if (ai.ValueKind != JsonValueKind.Object)
+        {
+            result.Errors.Add($"ESCHEMA: {file} ai must be an object if present.");
+            return;
+        }
+
+        // Validate prompt structure if present
+        if (ai.TryGetProperty("prompt", out var prompt) && prompt.ValueKind != JsonValueKind.Object)
+        {
+            result.Errors.Add($"ESCHEMA: {file} ai.prompt must be an object if present.");
+        }
+
+        // Validate policy structure if present
+        if (ai.TryGetProperty("policy", out var policy) && policy.ValueKind != JsonValueKind.Object)
+        {
+            result.Errors.Add($"ESCHEMA: {file} ai.policy must be an object if present.");
+        }
+
+        // Validate examples structure if present
+        if (ai.TryGetProperty("examples", out var examples) && examples.ValueKind != JsonValueKind.Array)
+        {
+            result.Errors.Add($"ESCHEMA: {file} ai.examples must be an array if present.");
+        }
+    }
+
+    static void ValidateOptionalPrompt(string prompt, EventSchemaValidationResult result)
+    {
+        const int MaxPromptBytes = 128 * 1024;
+        var bytes = System.Text.Encoding.UTF8.GetByteCount(prompt);
+        if (bytes > MaxPromptBytes)
+        {
+            result.Errors.Add($"ESCHEMA: prompt.txt exceeds {MaxPromptBytes} bytes limit.");
+        }
+
+        // Check for valid UTF-8 (already ensured by string read)
+        // No YAML parsing - treat as plain text
     }
 }
 

@@ -13,12 +13,13 @@ namespace BattleLuck.Services.Runtime;
 /// Loads the AI prompt, action policy, and examples directly from the unified
 /// event JSON at config/BattleLuck/events/&lt;modeId&gt;.json.
 ///
-/// prompt.txt is intentionally no longer part of the runtime configuration
-/// path. Each event owns its complete LLM contract in one JSON document.
+/// config/BattleLuck/events/&lt;modeId&gt;/prompt.txt is optional and provides
+/// a narrative override. The JSON ai block owns the structured policy.
 /// </summary>
 public sealed class PromptContextLoader
 {
     readonly ActionManifestService _actions = ActionManifestService.Instance;
+    const int MaxPromptBytes = 128 * 1024;
 
     public sealed class PromptContext
     {
@@ -48,10 +49,11 @@ public sealed class PromptContextLoader
         if (string.IsNullOrWhiteSpace(modeId))
             return null;
 
-        var path = Path.Combine(ConfigLoader.ConfigRoot, "events", $"{modeId}.json");
-        if (!File.Exists(path))
+        var jsonPath = Path.Combine(ConfigLoader.ConfigRoot, "events", $"{modeId}.json");
+        if (!File.Exists(jsonPath))
             return null;
 
+<<<<<<< C:/Users/ahmad/OneDrive/Desktop/BL/Services/Runtime/PromptContextLoader.cs
         try
         {
             return ParseEventJson(File.ReadAllText(path), modeId);
@@ -79,6 +81,65 @@ public sealed class PromptContextLoader
             var root = document.RootElement;
             if (!root.TryGetProperty("ai", out var ai) || ai.ValueKind != JsonValueKind.Object)
                 return null;
+=======
+        try
+        {
+            var context = ParseEventJson(File.ReadAllText(jsonPath), modeId);
+            if (context == null)
+                return null;
+
+            // Optional narrative override from prompt.txt
+            var promptPath = Path.Combine(ConfigLoader.ConfigRoot, "events", modeId, "prompt.txt");
+            if (File.Exists(promptPath))
+            {
+                try
+                {
+                    var promptText = File.ReadAllText(promptPath);
+                    if (!string.IsNullOrWhiteSpace(promptText))
+                    {
+                        var bytes = Encoding.UTF8.GetByteCount(promptText);
+                        if (bytes > MaxPromptBytes)
+                        {
+                            BattleLuckPlugin.LogWarning($"[PromptContextLoader] Event '{modeId}' prompt.txt exceeds {MaxPromptBytes} bytes, ignoring override.");
+                        }
+                        else
+                        {
+                            context.Narrative = promptText.Trim();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    BattleLuckPlugin.LogWarning($"[PromptContextLoader] Failed to read prompt.txt for '{modeId}': {ex.Message}");
+                }
+            }
+
+            return context;
+        }
+        catch (Exception ex)
+        {
+            BattleLuckPlugin.LogWarning($"[PromptContextLoader] Failed to load AI config from {jsonPath}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Parses the embedded AI policy from a candidate unified event document.
+    /// Deployment validation uses this overload so it never reads a stale live
+    /// event while validating a staged replacement.
+    /// </summary>
+    public PromptContext? ParseEventJson(string eventJson, string fallbackEventId = "")
+    {
+        if (string.IsNullOrWhiteSpace(eventJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(eventJson);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("ai", out var ai) || ai.ValueKind != JsonValueKind.Object)
+                return null;
+>>>>>>> C:/Users/ahmad/.windsurf/worktrees/BL/BL-pewter-galileo/Services/Runtime/PromptContextLoader.cs
 
             var context = new PromptContext
             {

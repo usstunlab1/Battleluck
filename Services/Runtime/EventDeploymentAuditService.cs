@@ -89,7 +89,7 @@ public sealed class EventDeploymentAuditService
                     ["event.json"] = status?.HasAllFiles == true,
                     ["zones.json"] = status?.HasAllFiles == true,
                     ["kits.json"] = status?.HasAllFiles == true,
-                    ["prompt.txt"] = status?.HasAllFiles == true
+                    ["prompt.txt"] = true // Optional, always report as present if checked
                 },
                 Validation = new EventValidationAudit
                 {

@@ -172,10 +172,8 @@ public static class ConfigController
             if (!File.Exists(definitionPath))
                 return OperationResult.Fail($"Event '{eventId}' not found.");
 
-            var promptPath = Path.Combine(
-                BattleLuck.Core.Loaders.ModeConfigLoader.EventsRoot,
-                eventId,
-                "prompt.txt");
+            var eventsRoot = Path.Combine(ConfigLoader.ConfigRoot, "events");
+            var promptPath = Path.Combine(eventsRoot, eventId, "prompt.txt");
 
             lock (ConfigWriteLock)
             {

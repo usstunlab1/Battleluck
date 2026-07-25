@@ -12,7 +12,7 @@ namespace BattleLuck.Services.Runtime;
 public sealed class EventTemplateService
 {
     static readonly Regex ValidId = new("^[a-z0-9][a-z0-9_-]{1,31}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    static readonly string[] TemplateFiles = { "zones.json", "kits.json", "prompt.txt" };
+    static readonly string[] TemplateFiles = { "zones.json", "kits.json" };
 
     public OperationResult<CustomEventResult> CreateFromTemplate(
         string modeId,
@@ -59,7 +59,6 @@ public sealed class EventTemplateService
             // Rewrite event definition and write to canonical flat path
             RewriteEvent(sourceEvent, Path.Combine(eventsRoot, $"{modeId}.json"), modeId, templateId, resolvedDisplayName, sourceZoneHash, targetZoneHash);
             RewriteZones(Path.Combine(stagingDirectory, "zones.json"), modeId, templateId, sourceZoneHash, targetZoneHash);
-            RewritePrompt(Path.Combine(stagingDirectory, "prompt.txt"), modeId, templateId, resolvedDisplayName);
 
             // Move supporting files to event subdirectory
             var targetDirectory = Path.Combine(eventsRoot, modeId);
@@ -154,17 +153,6 @@ public sealed class EventTemplateService
         }
 
         File.WriteAllText(path, JsonSerializer.Serialize(zones, ConfigLoader.JsonOptions));
-    }
-
-    static void RewritePrompt(string path, string modeId, string templateId, string displayName)
-    {
-        if (!File.Exists(path))
-            return;
-
-        var text = File.ReadAllText(path);
-        text = Regex.Replace(text, $"(?im)^eventId:\\s*{Regex.Escape(templateId)}\\s*$", $"eventId: {modeId}");
-        text = Regex.Replace(text, $"\\b{Regex.Escape(ToDisplayName(templateId))}\\b", displayName, RegexOptions.IgnoreCase);
-        File.WriteAllText(path, text);
     }
 
     static IEnumerable<EventActionDefinition> EnumerateActions(UnifiedEventDefinition definition)

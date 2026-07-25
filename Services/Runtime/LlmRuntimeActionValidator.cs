@@ -84,12 +84,12 @@ public sealed class LlmRuntimeActionValidator
             return null;
 
         if (prompt.BlockedActions.Contains(actionName, StringComparer.OrdinalIgnoreCase))
-            return OperationResult.Fail($"{actionName}: blocked by {modeId}/prompt.txt.");
+            return OperationResult.Fail($"{actionName}: blocked by {modeId} event.json AI policy.");
 
         if (prompt.AllowedActions.Count > 0 &&
             !prompt.AllowedActions.Contains(actionName, StringComparer.OrdinalIgnoreCase))
         {
-            return OperationResult.Fail($"{actionName}: not allowed by {modeId}/prompt.txt.");
+            return OperationResult.Fail($"{actionName}: not allowed by {modeId} event.json AI policy.");
         }
 
         return null;

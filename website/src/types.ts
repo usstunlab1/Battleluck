@@ -222,30 +222,3 @@ export interface FeedbackSubmission {
   comment: string;
   createdAt: string;
 }
-
-export type QuestDifficulty = 'Novice' | 'Veteran' | 'Elite' | 'Legendary';
-export type QuestStatus = 'available' | 'active' | 'completed';
-
-export interface NpcQuestObjective {
-  id: string;
-  label: string;
-  current: number;
-  target: number;
-}
-
-export interface NpcQuest {
-  id: string;
-  title: string;
-  npcName: string;
-  npcRole: string;
-  region: RegionId;
-  difficulty: QuestDifficulty;
-  level: number;
-  description: string;
-  story: string;
-  objectives: NpcQuestObjective[];
-  rewards: Array<{ name: string; amount?: number }>;
-  expiresIn?: string;
-  status: QuestStatus;
-  accent: string;
-}

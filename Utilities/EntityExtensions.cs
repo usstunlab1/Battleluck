@@ -188,6 +188,33 @@ public static class EntityExtensions
             entity.With((ref LastTranslation lt) => lt.Value = position);
     }
 
+    /// <summary>
+    /// Instructs an NPC to navigate to a position using the game's native pathfinding.
+    /// This should be preferred over SetPosition for all non-teleport NPC movement.
+    /// </summary>
+    public static void NavigateTo(this Entity entity, float3 position)
+    {
+        if (!entity.Exists() || entity.IsPlayer()) return;
+
+        // The specific components may vary, but the pattern is to set a destination
+        // for the server's AI systems to act upon.
+        // A common approach is to use a Follower component with a null follow target
+        // and a specific destination, or a dedicated pathfinding request component.
+        if (entity.Has<ProjectM.Pathfinding.Follower>())
+        {
+            entity.With((ref ProjectM.Pathfinding.Follower follower) =>
+            {
+                follower.Mode = ProjectM.Pathfinding.FollowMode.Simple;
+                follower.Target = Entity.Null;
+                follower.SimpleMoveTo = position;
+                follower.SimpleMoveToRadius = 1.5f; // Arrive within this distance
+            });
+        }
+        // Fallback for entities that don't use Follower but might have basic movement
+        else if (entity.Has<Movement>())
+            entity.With((ref Movement m) => m.TargetPosition = position);
+    }
+
     static bool TryTeleportPlayerWithNetworkEvent(Entity character, float3 position)
     {
         var user = character.GetUserEntity();

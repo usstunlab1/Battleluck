@@ -3,16 +3,20 @@ using BattleLuck.Services.Runtime;
 
 namespace BattleLuck.Core.Validation;
 
-public static class ActionRegistryValidator
+public class ActionRegistryValidator : IActionValidator
 {
-    public static IReadOnlyList<string> Validate(string modeId, ModeConfig config)
+    private readonly HashSet<string> _allowedActions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _initializationIssues = new();
+
+    public ActionRegistryValidator()
     {
-        var issues = new List<string>();
         var catalogPath = Path.Combine(ConfigLoader.ConfigRoot, "actions_catalog.json");
         if (!File.Exists(catalogPath))
-            return issues;
+        {
+            _initializationIssues.Add("Action catalog 'actions_catalog.json' not found.");
+            return;
+        }
 
-        var allowedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             using var stream = File.OpenRead(catalogPath);
@@ -23,15 +27,20 @@ public static class ActionRegistryValidator
                 {
                     var value = action.GetString();
                     if (!string.IsNullOrWhiteSpace(value))
-                        allowedActions.Add(value);
+                        _allowedActions.Add(value);
                 }
             }
         }
         catch (Exception ex)
         {
-            issues.Add($"Action catalog parse failed: {ex.Message}");
-            return issues;
+            _initializationIssues.Add($"Action catalog parse failed: {ex.Message}");
         }
+    }
+
+    public IReadOnlyList<string> Validate(string modeId, ModeConfig config)
+    {
+        var issues = new List<string>();
+        issues.AddRange(_initializationIssues);
 
         foreach (var flow in EnumerateModeFlows(config))
         {
@@ -43,7 +52,7 @@ public static class ActionRegistryValidator
                     if (string.IsNullOrWhiteSpace(actionName))
                         continue;
 
-                    if (!allowedActions.Contains(actionName))
+                    if (!_allowedActions.Contains(actionName))
                         issues.Add($"Unknown action '{actionName}' in flow phase '{flow.PhaseName}/{flowDefinition.Key}'.");
                 }
             }
@@ -52,7 +61,7 @@ public static class ActionRegistryValidator
         return issues;
     }
 
-    static IEnumerable<(string PhaseName, FlowConfig FlowConfig)> EnumerateModeFlows(ModeConfig config)
+    private static IEnumerable<(string PhaseName, FlowConfig FlowConfig)> EnumerateModeFlows(ModeConfig config)
     {
         yield return ("enter", config.FlowEnter);
         yield return ("start", config.Session.Flow.Start);
@@ -62,7 +71,7 @@ public static class ActionRegistryValidator
         yield return ("exit", config.FlowExit);
     }
 
-    static string ExtractActionName(string actionString)
+    private static string ExtractActionName(string actionString)
     {
         var action = (actionString ?? string.Empty).Trim();
         var separatorIndex = action.IndexOf(':');
@@ -84,4 +93,9 @@ public static class ActionRegistryValidator
     {
         return BattleLuck.Services.Runtime.ActionManifestService.Instance.IsKnown(actionName);
     }
+}
+
+public interface IActionValidator
+{
+    IReadOnlyList<string> Validate(string modeId, ModeConfig config);
 }
