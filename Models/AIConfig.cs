@@ -309,6 +309,32 @@ namespace BattleLuck.Models
         public bool LogsEnabled { get; set; } = false;
     }
 
+    public class GistSyncSettings
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        [JsonPropertyName("github_token")]
+        public string GitHubToken { get; set; } = "";
+
+        [JsonPropertyName("gist_id")]
+        public string GistId { get; set; } = "";
+
+        [JsonPropertyName("auto_sync")]
+        public bool AutoSync { get; set; } = true;
+
+        [JsonPropertyName("sync_interval_seconds")]
+        public int SyncIntervalSeconds { get; set; } = 300;
+
+        [JsonPropertyName("catalog_files")]
+        public List<string> CatalogFiles { get; set; } = new()
+        {
+            "actions_catalog.json",
+            "prefab-actions.json",
+            "render-prefabs.json"
+        };
+    }
+
     public class MCPServerConfig
     {
         [JsonPropertyName("enabled")]
