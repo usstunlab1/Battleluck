@@ -26,6 +26,36 @@ can run a local Llama/Ollama-compatible endpoint or explicitly configure a hoste
 provider; without one, BattleLuck uses its simple local fallback for basic help and
 catalog guidance. Live actions and event edits still require admin approval.
 
+## Development & CI
+
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
+It runs on pushes to `main` and pull requests and validates the repository with:
+
+- `ruff check .`
+- `black --check .`
+- `mypy --ignore-missing-imports .`
+- `pre-commit run --all-files`
+- `pytest -q`
+
+For local development, install Python 3.11 and these tools:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install ruff black mypy pytest pre-commit
+```
+
+Then run:
+
+```bash
+pre-commit install
+pre-commit run --all-files
+pytest -q
+```
+
+If your changes touch AI or LLM workflows, configure repository secrets such as
+`OPENAI_API_KEY` or `AZURE_OPENAI_KEY` before enabling provider-dependent tests. Keep
+secrets out of the repository.
+
 ### How AI works for every installation
 
 1. Install BattleLuck on the dedicated server; players do not need a separate AI
