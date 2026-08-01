@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BattleLuck", "BattleLuck.csproj", "{01876A4F-6EC6-2ACD-DB99-4A8F65162B1D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BattleLuck", "battleluck/BattleLuck.csproj", "{01876A4F-6EC6-2ACD-DB99-4A8F65162B1D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BattleLuck.Tests", "BattleLuck.Tests\BattleLuck.Tests.csproj", "{DE984DB3-2D76-4CE0-A9B7-51D450378C28}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BattleLuck.Tests", "battleluck/tests/BattleLuck.Tests.csproj", "{DE984DB3-2D76-4CE0-A9B7-51D450378C28}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

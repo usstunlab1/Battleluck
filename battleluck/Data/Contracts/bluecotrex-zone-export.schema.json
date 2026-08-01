@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://battleluck.local/contracts/bluecotrex-zone-export.schema.json",
+  "title": "Bluecotrex Zone Export Records",
+  "allOf": [
+    { "$ref": "cross-project-export.schema.json" },
+    {
+      "properties": {
+        "contractName": { "const": "bluecotrex.zones" },
+        "producer": { "const": "Bluecotrex" },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["zoneId", "zoneHash", "eventId", "center", "radius", "exitRadius", "markers", "allowedPrefabGroups", "metadata", "sourceVersion"],
+            "properties": {
+              "zoneId": { "type": "string", "minLength": 1 },
+              "zoneHash": { "type": "integer" },
+              "eventId": { "type": "string", "minLength": 1 },
+              "center": { "$ref": "#/$defs/vector3" },
+              "radius": { "type": "number", "exclusiveMinimum": 0 },
+              "exitRadius": { "type": "number", "exclusiveMinimum": 0 },
+              "bounds": { "type": ["object", "null"] },
+              "polygon": { "type": "array", "items": { "$ref": "#/$defs/vector3" } },
+              "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
+              "sunlightSuppression": { "type": "boolean" },
+              "allowedPrefabGroups": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+              "metadata": { "type": "object" },
+              "sourceVersion": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["markerId", "kind", "position"],
+      "properties": {
+        "markerId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["spawn", "team_spawn", "objective", "teleport"] },
+        "teamId": { "type": ["integer", "null"] },
+        "position": { "$ref": "#/$defs/vector3" }
+      }
+    }
+  }
+}

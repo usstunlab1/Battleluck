@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>VAutomationCore</id>
+    <version>1.0.3</version>
+    <authors>Coyoteq1</authors>
+    <license type="file">LICENSE</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <icon>icon.png</icon>
+    <readme>README.md</readme>
+    <description>Core library for V Rising automation mods providing shared utilities, ECS helpers, and configuration management.</description>
+    <releaseNotes>Update docs/wiki hosting links, support/community references, and package documentation alignment. Includes package icon/readme, SourceLink, symbols, and XML API documentation.</releaseNotes>
+    <copyright>Copyright (c) Coyoteq1 2026</copyright>
+    <tags>vrising modding bepinex il2cpp ecs automation</tags>
+    <repository type="git" url="https://github.com/Coyoteq1" branch="refs/heads/cycleborn-export" commit="36f62dbdb0a9aff5789c039e75585fb2d90e0c9e" />
+    <dependencies>
+      <group targetFramework="net6.0" />
+    </dependencies>
+  </metadata>
+</package>

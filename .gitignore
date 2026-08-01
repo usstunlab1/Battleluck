@@ -28,6 +28,16 @@ obj/
 obj-readme/
 obj-tests/
 artifacts/
+dist/
+desktop-build/
+
+# Unity generated state
+Library/
+Temp/
+Logs/
+
+# Mis-expanded local runtime paths
+%CONFIG_PATH%/
 
 # ThunderStore package
 thunderstore_package/
@@ -79,6 +89,7 @@ env/
 node_modules/
 kubernetes-engine-samples/
 kubernetes-engine-samples.worktrees/
+copilot-worktrees/
 
 # NGG specific
 NGG/.gitignore
@@ -91,6 +102,7 @@ NGG/inspector/
 .github/
 
 # Misc transient
+.audit/
 c
 start
 todo.md

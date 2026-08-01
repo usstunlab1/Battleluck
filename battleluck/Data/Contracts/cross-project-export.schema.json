@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://battleluck.local/contracts/cross-project-export.schema.json",
+  "title": "BL Cross-Project Export Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractName",
+    "schemaVersion",
+    "producer",
+    "producerVersion",
+    "sourceVersion",
+    "targetGameVersion",
+    "createdAtUtc",
+    "sourceHash",
+    "contentHash",
+    "records",
+    "validationResult"
+  ],
+  "properties": {
+    "contractName": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "producer": { "enum": ["BattleLuck", "BlueLuck AI", "Bluecotrex"] },
+    "producerVersion": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "string", "minLength": 1 },
+    "targetGameVersion": { "type": "string", "minLength": 1 },
+    "createdAtUtc": { "type": "string", "format": "date-time" },
+    "sourceHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceFiles": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "records": { "type": "array" },
+    "validationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "warnings", "errors"],
+      "properties": {
+        "valid": { "type": "boolean" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "errors": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
