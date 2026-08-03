@@ -55,7 +55,17 @@ public static class SafeFileSystem
                     stream.Flush(flushToDisk: true);
                 }
 
-                File.Move(temporary, fullPath, overwrite: true);
+                try
+                {
+                    File.Move(temporary, fullPath, overwrite: true);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Fallback for environments where MoveFileEx with replace is denied
+                    // (e.g., OneDrive-synced directories). Copy then delete preserves content.
+                    File.Copy(temporary, fullPath, overwrite: true);
+                    File.Delete(temporary);
+                }
             }
             finally
             {
